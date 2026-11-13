@@ -165,7 +165,16 @@ const TEXT_PROP: Record<string, string> = {
   button: "value",
 };
 
-export function v1EditorToV2(p: Project, notes: ProtocolIssue[]): ProjectDoc {
+/**
+ * opts.logic=false：只转换外观部分（页面、组件、导航、元信息），逻辑留空。
+ * 原生协议编辑的工程逻辑保存在 protocolExtras 里，不能再从 v1 字段或 "$变量" 文本推导。
+ */
+export function v1EditorToV2(
+  p: Project,
+  notes: ProtocolIssue[],
+  opts: { logic?: boolean } = {},
+): ProjectDoc {
+  const withLogic = opts.logic !== false;
   const ids = new Map<string, string>();
   const fix = (id: unknown, prefix: string): string => {
     const raw = typeof id === "string" ? id : "";
@@ -347,7 +356,7 @@ export function v1EditorToV2(p: Project, notes: ProtocolIssue[]): ProjectDoc {
     date: { format: "YYYY-MM-DD", refresh: "minute" },
     weekday: { format: "W", refresh: "minute" },
   };
-  for (const tb of p.timeBindings ?? []) {
+  for (const tb of withLogic ? (p.timeBindings ?? []) : []) {
     const componentId = fix(tb.nodeId, "n");
     const prop = TEXT_PROP[compType.get(componentId) ?? ""];
     if (!prop) continue;
@@ -362,7 +371,7 @@ export function v1EditorToV2(p: Project, notes: ProtocolIssue[]): ProjectDoc {
     });
   }
   // v1 文本里的 $变量 在预览时会被替换，迁移成表达式绑定，保持行为一致。
-  for (const page of pages) {
+  for (const page of withLogic ? pages : []) {
     for (const comp of page.components) {
       const prop = TEXT_PROP[comp.type];
       const raw = prop ? comp.props[prop] : undefined;

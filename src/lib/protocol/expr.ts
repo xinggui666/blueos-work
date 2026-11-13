@@ -726,3 +726,49 @@ export function assignable(from: ValueType, to: ValueType): boolean {
   if (to === "bool") return from === "int" || from === "float";
   return false;
 }
+
+/**
+ * 表达式里作为变量使用的标识符（不含函数名、成员名、字符串内容）。
+ * 词法错误时返回 null。
+ */
+export function identifiersOf(src: string): string[] | null {
+  let toks: Tok[];
+  try {
+    toks = lex(src);
+  } catch {
+    return null;
+  }
+  const out: string[] = [];
+  toks.forEach((t, i) => {
+    if (t.k !== "id") return;
+    const prev = toks[i - 1];
+    const next = toks[i + 1];
+    if (prev?.k === "op" && prev.v === ".") return;
+    if (next?.k === "op" && next.v === "(") return;
+    if (t.v === "true" || t.v === "false" || t.v === "null") return;
+    out.push(t.v);
+  });
+  return out;
+}
+
+/** 把表达式里的变量 from 改名为 to（只改变量位置，字符串和函数名不动）。词法错误时原样返回。 */
+export function renameIdentifier(src: string, from: string, to: string): string {
+  let toks: Tok[];
+  try {
+    toks = lex(src);
+  } catch {
+    return src;
+  }
+  let out = "";
+  let last = 0;
+  toks.forEach((t, i) => {
+    if (t.k !== "id" || t.v !== from) return;
+    const prev = toks[i - 1];
+    const next = toks[i + 1];
+    if (prev?.k === "op" && prev.v === ".") return;
+    if (next?.k === "op" && next.v === "(") return;
+    out += src.slice(last, t.pos) + to;
+    last = t.pos + t.v.length;
+  });
+  return out + src.slice(last);
+}
