@@ -459,7 +459,11 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
   const fileName = `${project.packageName.replace(/[^a-z0-9.]+/g, "") || "project"}.bproj`;
 
   return withTransaction(async (tx) => {
-    // 并发的两次相同下载：后到的在这里看到先到的结果，不重复扣分。
+    // 并发的两次相同下载：先占位（冲突则等先到的事务提交），再加锁读取，后到的直接复用结果，不重复扣分。
+    await tx.query(
+      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'export','failed',$4,'处理中') on conflict (user_id, idempotency_key) do nothing",
+      [id("job"), userId, project.id, key],
+    );
     const done = await one<Row>(
       tx,
       "select id, status, file_name, sha256, artifact, exported from jobs where user_id = $1 and idempotency_key = $2 for update",
@@ -476,13 +480,8 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
         artifactType: "bproj" as const,
       };
     }
-    const jobId = done?.id ? String(done.id) : id("job");
-    if (!done) {
-      await tx.query(
-        "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'export','failed',$4,'处理中')",
-        [jobId, userId, project.id, key],
-      );
-    }
+    if (!done?.id) throw new Error("导出任务占位失败");
+    const jobId = String(done.id);
     if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
     await commitQuota(tx, userId, "export", jobId);
     await tx.query(
@@ -538,10 +537,12 @@ async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
 
   const jobId = existing?.id ? String(existing.id) : id("job");
   if (!existing) {
-    await sql.query(
-      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'generation','failed',$4,'处理中')",
+    const inserted = await sql.query(
+      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'generation','failed',$4,'处理中') on conflict (user_id, idempotency_key) do nothing returning id",
       [jobId, userId, dsl.project.id, key],
     );
+    // 同一份 DSL 并发生成：后到的请求不重复扣额度。
+    if (!inserted.length) throw new ApiError(409, "同样的内容正在生成，请稍后重试");
   }
   const { buildArtifact } = await import("@/lib/blueos/emit.server");
   const artifact = buildArtifact(dsl);
