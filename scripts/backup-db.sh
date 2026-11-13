@@ -1,6 +1,8 @@
 #!/bin/sh
 # Usage: DATABASE_URL=postgres://... sh scripts/backup-db.sh
 set -eu
+# Backups contain private user data and auth sessions.
+umask 077
 if [ -z "${DATABASE_URL:-}" ]; then
   echo "DATABASE_URL is required" >&2
   exit 1

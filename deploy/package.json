@@ -1,0 +1,16 @@
+{
+  "name": "blueos-work-server-deploy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "node scripts/migrate.mjs",
+    "start": "node scripts/migrate.mjs && node .output/server/index.mjs",
+    "worker": "node worker/build-worker.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

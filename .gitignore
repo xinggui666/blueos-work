@@ -30,3 +30,9 @@ deploy/toolkit/
 
 # Android 内置界面（npm run build:android-web 生成）
 android/app/src/main/assets/www/
+
+# Database backups are private operational data, never source or deliverables
+backups/
+
+__pycache__/
+*.pyc
