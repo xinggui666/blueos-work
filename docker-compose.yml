@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    env_file: .env
+    ports:
+      - "${PORT:-8080}:8080"
+    depends_on:
+      - db
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: blueos
+      POSTGRES_PASSWORD: blueos
+      POSTGRES_DB: blueos
+    volumes:
+      - blueos-db:/var/lib/postgresql/data
+  redis:
+    image: redis:7
+    # 当前业务不读取 Redis。这个服务只是预留，未接入前不要把它当成已经在用。
+volumes:
+  blueos-db:

@@ -8,6 +8,7 @@ import {
   DESIGN,
   asColor,
   catalogOf,
+  formatClock,
   initialPreview,
   makeAction,
   projectToDsl,
@@ -58,6 +59,22 @@ export function EditorView({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (project && !pageId) setPageId(project.pages[0]?.id ?? null);
   }, [project, pageId]);
+
+  useEffect(() => {
+    if (!previewOn || !project) return;
+    const tick = () => {
+      const bindings = project.timeBindings || [];
+      if (!bindings.length) return;
+      setTextMap((current) => {
+        const next = { ...current };
+        for (const binding of bindings) next[binding.nodeId] = formatClock(binding.format);
+        return next;
+      });
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [previewOn, project]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -454,7 +471,7 @@ function Stage({
   function start(event: PointerEvent, node: SceneNode, kind: "move" | "resize") {
     if (preview) {
       event.stopPropagation();
-      onPlay(node.actions ?? []);
+      onPlay((node.actions ?? []).filter((action) => (action.trigger || "click") === "click"));
       return;
     }
     event.stopPropagation();
@@ -886,7 +903,8 @@ function ActionsEditor({ project, pageId, node }: { project: Project; pageId: st
   }
   return (
     <div className="mt-4 border-t border-line pt-3">
-      <p className="text-sm font-medium">点击后</p>
+      <p className="text-sm font-medium">动作</p>
+      <p className="mt-1 text-xs leading-5 text-muted">默认是点击。长按、双击、滑动只在这份工程里保存，预览不会当成手表已支持。</p>
       <div className="mt-2 grid gap-2">
         {actions.map((action, index) => (
           <div key={action.id} className="rounded-md border border-line p-2">
@@ -907,11 +925,26 @@ function ActionsEditor({ project, pageId, node }: { project: Project; pageId: st
                 <option value="hide">隐藏组件</option>
                 <option value="setText">修改文字</option>
                 <option value="setVar">修改变量</option>
+                <option value="call">调用函数</option>
               </select>
               <button type="button" className="min-h-11 rounded-md border border-line px-2 text-xs text-warn" onClick={() => write(actions.filter((item) => item.id !== action.id))}>
                 删除
               </button>
             </div>
+            <select
+              value={action.trigger || "click"}
+              onChange={(event) => {
+                const next = actions.slice();
+                next[index] = { ...action, trigger: event.target.value as AppAction["trigger"] };
+                write(next);
+              }}
+              className="mt-2 min-h-11 w-full rounded-md border border-line bg-bg px-2 text-sm"
+            >
+              <option value="click">点击时</option>
+              <option value="longpress">长按时（手表未验证）</option>
+              <option value="double">双击时（手表未验证）</option>
+              <option value="swipe">滑动时（手表未验证）</option>
+            </select>
             {action.kind === "navigate" ? (
               <select
                 value={action.pageName}
@@ -935,6 +968,40 @@ function ActionsEditor({ project, pageId, node }: { project: Project; pageId: st
                 onChange={(event) => {
                   const next = actions.slice();
                   next[index] = action.kind === "setVar" ? { ...action, varValue: event.target.value } : { ...action, text: event.target.value };
+                  write(next);
+                }}
+                className="mt-2 min-h-11 w-full rounded-md border border-line bg-bg px-2 text-sm"
+              />
+            ) : null}
+            {action.kind === "call" ? (
+              <input
+                value={action.varKey}
+                placeholder="函数名，例如 openHome"
+                onChange={(event) => {
+                  const next = actions.slice();
+                  next[index] = { ...action, varKey: event.target.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 21) };
+                  write(next);
+                }}
+                className="mt-2 min-h-11 w-full rounded-md border border-line bg-bg px-2 text-sm"
+              />
+            ) : null}
+            <input
+              value={action.whenKey}
+              placeholder="可选：变量相等才执行，变量名"
+              onChange={(event) => {
+                const next = actions.slice();
+                next[index] = { ...action, whenKey: event.target.value.replace(/[^A-Za-z0-9_]/g, "").slice(0, 21) };
+                write(next);
+              }}
+              className="mt-2 min-h-11 w-full rounded-md border border-line bg-bg px-2 text-sm"
+            />
+            {action.whenKey ? (
+              <input
+                value={action.whenValue}
+                placeholder="要相等的值"
+                onChange={(event) => {
+                  const next = actions.slice();
+                  next[index] = { ...action, whenValue: event.target.value.slice(0, 40) };
                   write(next);
                 }}
                 className="mt-2 min-h-11 w-full rounded-md border border-line bg-bg px-2 text-sm"
@@ -1146,13 +1213,30 @@ function LogicPanel({ project, page, node, advanced }: { project: Project; page:
         {actions.length === 0 && node ? <li className="text-sm text-muted">这个组件还没有点击动作。</li> : null}
         {actions.map((action, index) => (
           <li key={action.id} className="rounded-xl border border-line px-3 py-2 text-sm">
-            {index + 1}. 点击后{actionLabel(action)}
+            {index + 1}. {(action.trigger && action.trigger !== "click" ? "非点击触发，" : "点击后")}{actionLabel(action)}
           </li>
         ))}
       </ol>
+      {advanced && node ? (
+        <button
+          type="button"
+          className="mt-3 min-h-11 w-full rounded-md border border-line text-sm"
+          onClick={() => {
+            useStudio.getState().updateProject(project.id, (current) => ({
+              ...current,
+              timeBindings: [
+                ...(current.timeBindings || []).filter((item) => item.nodeId !== node.id),
+                { id: `t${node.id}`.slice(0, 24), nodeId: node.id, format: "time" as const },
+              ],
+            }));
+          }}
+        >
+          预览里把当前时间绑到这个组件
+        </button>
+      ) : null}
       {advanced ? (
         <div className="mt-4 rounded-xl border border-line p-3 text-xs leading-5 text-muted">
-          待验证，不会当成已上线：长按、滑动、条件分支、循环、自定义函数、时间绑定到按钮。这些都要等 BlueOS SDK 核对后才能写入可运行结果。当前预览只跑已经保存的点击动作。
+          待验证，不会写成手表已支持：长按、滑动、双击、条件、循环和自定义函数。网页预览可以按结构化步骤演示「调用函数」和「变量相等才执行」，这不是真机验收。时间绑定只在预览里每秒刷新。
         </div>
       ) : (
         <p className="mt-4 text-xs leading-5 text-muted">切到高级模式可以查看尚未验证的能力，不会因此改掉现有点击。</p>
@@ -1169,6 +1253,7 @@ function actionLabel(action: AppAction): string {
   if (action.kind === "show") return `显示 ${action.nodeId || "未选组件"}`;
   if (action.kind === "hide") return `隐藏 ${action.nodeId || "未选组件"}`;
   if (action.kind === "setText") return `把 ${action.nodeId || "组件"} 的文字改成「${action.text}」`;
+  if (action.kind === "call") return `调用函数 ${action.varKey || "未命名"}`;
   return `把变量 ${action.varKey || "未选"} 设为「${action.varValue}」`;
 }
 

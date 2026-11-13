@@ -17,8 +17,10 @@ import { Route as DuelRouteImport } from './routes/duel'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarketRouteImport } from './routes/market'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as EditIdRouteImport } from './routes/edit.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiV1PlatformRouteImport } from './routes/api/v1/platform'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,6 +62,11 @@ const MarketRoute = MarketRouteImport.update({
   path: '/market',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EditIdRoute = EditIdRouteImport.update({
   id: '/edit/$id',
   path: '/edit/$id',
@@ -68,6 +75,11 @@ const EditIdRoute = EditIdRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1PlatformRoute = ApiV1PlatformRouteImport.update({
+  id: '/api/v1/platform',
+  path: '/api/v1/platform',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -80,8 +92,10 @@ export interface FileRoutesByFullPath {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
+  '/api/health': typeof ApiHealthRoute
   '/edit/$id': typeof EditIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/platform': typeof ApiV1PlatformRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,8 +106,10 @@ export interface FileRoutesByTo {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
+  '/api/health': typeof ApiHealthRoute
   '/edit/$id': typeof EditIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/platform': typeof ApiV1PlatformRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,8 +121,10 @@ export interface FileRoutesById {
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
+  '/api/health': typeof ApiHealthRoute
   '/edit/$id': typeof EditIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v1/platform': typeof ApiV1PlatformRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,8 +137,10 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/market'
+    | '/api/health'
     | '/edit/$id'
     | '/api/auth/$'
+    | '/api/v1/platform'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,8 +151,10 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/market'
+    | '/api/health'
     | '/edit/$id'
     | '/api/auth/$'
+    | '/api/v1/platform'
   id:
     | '__root__'
     | '/'
@@ -143,8 +165,10 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/login'
     | '/market'
+    | '/api/health'
     | '/edit/$id'
     | '/api/auth/$'
+    | '/api/v1/platform'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,8 +180,10 @@ export interface RootRouteChildren {
   JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
   MarketRoute: typeof MarketRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   EditIdRoute: typeof EditIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV1PlatformRoute: typeof ApiV1PlatformRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -218,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/edit/$id': {
       id: '/edit/$id'
       path: '/edit/$id'
@@ -232,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/platform': {
+      id: '/api/v1/platform'
+      path: '/api/v1/platform'
+      fullPath: '/api/v1/platform'
+      preLoaderRoute: typeof ApiV1PlatformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -244,8 +284,10 @@ const rootRouteChildren: RootRouteChildren = {
   JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,
   MarketRoute: MarketRoute,
+  ApiHealthRoute: ApiHealthRoute,
   EditIdRoute: EditIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV1PlatformRoute: ApiV1PlatformRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

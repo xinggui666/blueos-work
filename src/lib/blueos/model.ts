@@ -36,16 +36,20 @@ export type SceneNode = {
   actions: AppAction[];
 };
 
-export type ActionKind = "navigate" | "back" | "toast" | "show" | "hide" | "setText" | "setVar";
+export type ActionKind = "navigate" | "back" | "toast" | "show" | "hide" | "setText" | "setVar" | "call";
+export type ActionTrigger = "click" | "longpress" | "double" | "swipe";
 
 export type AppAction = {
   id: string;
   kind: ActionKind;
+  trigger: ActionTrigger;
   pageName: string;
   nodeId: string;
   text: string;
   varKey: string;
   varValue: string;
+  whenKey: string;
+  whenValue: string;
 };
 
 export type AppVariable = {
@@ -55,6 +59,19 @@ export type AppVariable = {
   value: string;
   scope: "app" | "page";
   pageId: string;
+};
+
+export type AppFunction = {
+  id: string;
+  name: string;
+  steps: AppAction[];
+};
+
+export type TimeFormat = "time" | "timeSeconds" | "date" | "weekday";
+export type TimeBinding = {
+  id: string;
+  nodeId: string;
+  format: TimeFormat;
 };
 
 export type NavKind = "none" | "bottom" | "top" | "side";
@@ -87,6 +104,8 @@ export type Project = {
   startPageId: string;
   nav: { kind: NavKind; items: NavItem[] };
   variables: AppVariable[];
+  functions: AppFunction[];
+  timeBindings: TimeBinding[];
   templateId: TemplateId;
   pages: ScenePage[];
   revisions: Revision[];
@@ -449,11 +468,14 @@ export function makeAction(kind: ActionKind, patch: Partial<AppAction> = {}): Ap
   return {
     id: uid("a"),
     kind,
+    trigger: patch.trigger || "click",
     pageName: patch.pageName || "",
     nodeId: patch.nodeId || "",
     text: patch.text || "",
     varKey: patch.varKey || "",
     varValue: patch.varValue || "",
+    whenKey: patch.whenKey || "",
+    whenValue: patch.whenValue || "",
   };
 }
 
@@ -474,6 +496,8 @@ export function makeProject(partial?: Partial<Pick<Project, "name" | "appName" |
     startPageId: page.id,
     nav: { kind: "none", items: [] },
     variables: [],
+    functions: [],
+    timeBindings: [],
     templateId: "blank",
     pages: [page],
     revisions: [],
@@ -827,23 +851,30 @@ export function dslToProject(dsl: Dsl, revisions: Revision[] = []): Project {
   });
 }
 
-const ACTION_KINDS: ActionKind[] = ["navigate", "back", "toast", "show", "hide", "setText", "setVar"];
+const ACTION_KINDS: ActionKind[] = ["navigate", "back", "toast", "show", "hide", "setText", "setVar", "call"];
+const TRIGGERS: ActionTrigger[] = ["click", "longpress", "double", "swipe"];
+
+function readOneAction(item: unknown): AppAction {
+  const raw = isRecord(item) ? item : {};
+  const kind = ACTION_KINDS.includes(raw.kind as ActionKind) ? (raw.kind as ActionKind) : "toast";
+  const trigger = TRIGGERS.includes(raw.trigger as ActionTrigger) ? (raw.trigger as ActionTrigger) : "click";
+  return {
+    id: /^[a-z][a-z0-9]{3,20}$/.test(String(raw.id || "")) ? String(raw.id) : uid("a"),
+    kind,
+    trigger,
+    pageName: asText(raw.pageName, 31),
+    nodeId: asText(raw.nodeId, 24),
+    text: asText(raw.text, 40),
+    varKey: asText(raw.varKey, 21),
+    varValue: asText(raw.varValue, 40),
+    whenKey: asText(raw.whenKey, 21),
+    whenValue: asText(raw.whenValue, 40),
+  };
+}
 
 function readActions(value: unknown): AppAction[] {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, 8).map((item) => {
-    const raw = isRecord(item) ? item : {};
-    const kind = ACTION_KINDS.includes(raw.kind as ActionKind) ? (raw.kind as ActionKind) : "toast";
-    return {
-      id: /^[a-z][a-z0-9]{3,20}$/.test(String(raw.id || "")) ? String(raw.id) : uid("a"),
-      kind,
-      pageName: asText(raw.pageName, 31),
-      nodeId: asText(raw.nodeId, 24),
-      text: asText(raw.text, 40),
-      varKey: asText(raw.varKey, 21),
-      varValue: asText(raw.varValue, 40),
-    };
-  });
+  return value.slice(0, 8).map((item) => readOneAction(item));
 }
 
 function readNavigation(value: unknown, names: string[]): Dsl["navigation"] {
@@ -879,15 +910,7 @@ export function normalizeProject(input: Partial<Project>): Project {
     background: asColor(page.background) || "#F5F5F7",
     nodes: (page.nodes || []).map((node) => ({
       ...node,
-      actions: Array.isArray(node.actions) ? node.actions.map((action) => ({
-        id: action.id || uid("a"),
-        kind: ACTION_KINDS.includes(action.kind) ? action.kind : "toast",
-        pageName: action.pageName || "",
-        nodeId: action.nodeId || "",
-        text: action.text || "",
-        varKey: action.varKey || "",
-        varValue: action.varValue || "",
-      })) : [],
+      actions: Array.isArray(node.actions) ? node.actions.map((action) => readOneAction(action)) : [],
     })),
   }));
   const startPageId = pages.some((page) => page.id === input.startPageId) ? input.startPageId! : pages[0].id;
@@ -916,6 +939,8 @@ export function normalizeProject(input: Partial<Project>): Project {
       scope: item.scope === "page" ? "page" : "app",
       pageId: item.pageId || "",
     })),
+    functions: readFunctions(input.functions),
+    timeBindings: readTimeBindings(input.timeBindings),
     templateId: input.templateId === "tabs" || input.templateId === "settings" || input.templateId === "data" ? input.templateId : "blank",
     pages,
     revisions: input.revisions || [],
@@ -942,7 +967,7 @@ export function initialPreview(project: Project): PreviewState {
   };
 }
 
-export function runActions(project: Project, state: PreviewState, actions: AppAction[]): PreviewState {
+export function runActions(project: Project, state: PreviewState, actions: AppAction[], depth = 0): PreviewState {
   const next: PreviewState = {
     pageId: state.pageId,
     stack: state.stack.slice(),
@@ -952,6 +977,7 @@ export function runActions(project: Project, state: PreviewState, actions: AppAc
     toast: "",
   };
   for (const action of actions) {
+    if (action.whenKey && (next.vars[action.whenKey] ?? "") !== action.whenValue) continue;
     if (action.kind === "navigate") {
       const page = project.pages.find((item) => item.name === action.pageName);
       if (page && page.id !== next.pageId) {
@@ -971,9 +997,56 @@ export function runActions(project: Project, state: PreviewState, actions: AppAc
       next.text[action.nodeId] = action.text;
     } else if (action.kind === "setVar" && action.varKey) {
       next.vars[action.varKey] = action.varValue;
+    } else if (action.kind === "call" && action.varKey) {
+      if (depth >= 3) {
+        next.toast = "函数调用过深，已停止";
+        continue;
+      }
+      const fn = (project.functions || []).find((item) => item.name === action.varKey);
+      if (!fn) {
+        next.toast = "没有这个函数";
+        continue;
+      }
+      const nested = runActions(project, next, fn.steps, depth + 1);
+      next.pageId = nested.pageId;
+      next.stack = nested.stack;
+      next.hidden = nested.hidden;
+      next.text = nested.text;
+      next.vars = nested.vars;
+      if (nested.toast) next.toast = nested.toast;
     }
   }
   return next;
+}
+
+export function formatClock(format: TimeFormat, date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  if (format === "date") return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  if (format === "weekday") return "日一二三四五六"[date.getDay()] || "";
+  if (format === "timeSeconds") return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function readFunctions(value: unknown): AppFunction[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, 12).flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const name = asText(item.name, 21);
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,20}$/.test(name)) return [];
+    return [{ id: asText(item.id, 24) || uid("f"), name, steps: readActions(item.steps) }];
+  });
+}
+
+function readTimeBindings(value: unknown): TimeBinding[] {
+  if (!Array.isArray(value)) return [];
+  const formats: TimeFormat[] = ["time", "timeSeconds", "date", "weekday"];
+  return value.slice(0, 24).flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const nodeId = asText(item.nodeId, 24);
+    if (!nodeId) return [];
+    const format = formats.includes(item.format as TimeFormat) ? (item.format as TimeFormat) : "time";
+    return [{ id: asText(item.id, 24) || uid("t"), nodeId, format }];
+  });
 }
 
 export function shownText(raw: string, vars: Record<string, string>): string {

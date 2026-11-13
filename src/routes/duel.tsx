@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { DuelView } from "@/components/duel/duel-view";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/duel")({
-  component: DuelView,
+  component: function RetiredDuel() {
+    return <Navigate to="/" />;
+  },
 });

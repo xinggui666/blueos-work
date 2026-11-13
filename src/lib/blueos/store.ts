@@ -33,6 +33,7 @@ type Studio = {
   duplicateProject: (id: string) => string | null;
   removeProject: (id: string) => void;
   updateMeta: (id: string, patch: Partial<Pick<Project, "name" | "appName" | "packageName" | "device">>) => void;
+  updateProject: (id: string, recipe: (project: Project) => Project) => void;
   addPage: (id: string) => string | null;
   renamePage: (id: string, pageId: string, name: string) => string | null;
   removePage: (id: string, pageId: string) => void;
@@ -141,6 +142,13 @@ export const useStudio = create<Studio>()(
           ...history,
           projects: withProject(get().projects, id, () => ({ ...next, updatedAt: Date.now() })),
         });
+      },
+      updateProject: (id, recipe) => {
+        const current = get().projects.find((project) => project.id === id);
+        if (!current) return;
+        const next = normalizeProject({ ...recipe(current), id: current.id, updatedAt: Date.now() });
+        const history = remember(get().past, get().future, id, snapshotOf(current));
+        set({ ...history, projects: withProject(get().projects, id, () => next) });
       },
       addPage: (id) => {
         const current = get().projects.find((project) => project.id === id);

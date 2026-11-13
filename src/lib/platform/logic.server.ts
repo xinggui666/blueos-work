@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getSql, type Sql } from "@/lib/db";
-import { validateDsl, type Project, type Revision } from "@/lib/blueos/model";
+import { normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
 import { CLIENTS, isSharedAction, type ClientKind } from "@/lib/contract/surface";
 import {
   CONFIG_KEYS,
@@ -94,6 +94,19 @@ async function ledger(sql: Sql, userId: string, kind: string, delta: number, pha
     "insert into quota_ledger (id, user_id, kind, delta, phase, ref, note) values ($1,$2,$3,$4,$5,$6,$7)",
     [id("q"), userId, kind, delta, phase, ref, note],
   );
+}
+
+async function touchDevice(sql: Sql, userId: string, client: ClientKind) {
+  try {
+    await sql.query(
+      `insert into client_devices (id, user_id, client, label, last_seen)
+       values ($1,$2,$3,$4, now())
+       on conflict (id) do update set last_seen = now(), label = excluded.label`,
+      [`${client}:${userId}`, userId, client, client],
+    );
+  } catch {
+    // 设备表还没迁移时不挡住登录信息。
+  }
 }
 
 async function grantQuota(sql: Sql, userId: string, kind: QuotaKind, amount: number, phase: "grant" | "adjust", ref: string, note: string) {
@@ -271,14 +284,14 @@ function cleanProject(input: unknown): Project {
   for (const revision of revisions) {
     if (!revision || typeof revision.snapshot !== "string" || revision.snapshot.length > 150_000) throw new Error("修订快照无效");
   }
-  return {
+  return normalizeProject({
     ...project,
     name,
     appName,
     packageName,
     designWidth: 466,
     revisions,
-  };
+  });
 }
 
 async function projectCap(sql: Sql, userId: string): Promise<number> {
@@ -687,7 +700,10 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   if (!action.startsWith("admin") && !isSharedAction(action)) throw new Error("这个接口没有对客户端开放");
 
-  if (action === "me") return { ...(await me(sql, actor)), client };
+  if (action === "me") {
+    await touchDevice(sql, userId, client);
+    return { ...(await me(sql, actor)), client };
+  }
 
   if (action === "listProjects") return listProjects(sql, userId);
 
@@ -1272,6 +1288,39 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     await giveMembership(sql, String(order.user_id), plan, `order:${orderId}`);
     await sql.query("update orders set status = 'confirmed', note = $2 where id = $1", [orderId, text(body.note, 200) || "人工确认开通"]);
     await audit(sql, userId, "order.confirm", orderId, { status: "pending" }, { status: "confirmed" });
+    return { ok: true };
+  }
+
+  if (action === "adminRefundOrder") {
+    requirePerm(actor, "orders.confirm");
+    const orderId = text(body.id, 48);
+    const order = await one<Row>(sql, "select * from orders where id = $1", [orderId]);
+    if (!order || order.status !== "confirmed") throw new Error("只有已开通的订单可以撤销");
+    const plan = await one<Row>(sql, "select * from plans where id = $1", [order.plan_id]);
+    await sql.query("update orders set status = 'refunded', note = $2 where id = $1", [orderId, text(body.note, 200) || "后台撤销"]);
+    await sql.query("update memberships set ends_at = now() where user_id = $1 and ends_at > now()", [order.user_id]);
+    if (plan) {
+      const pack =
+        Math.max(0, Number(plan.build_quota) || 0) +
+        Math.max(0, Number(plan.monthly_build) || 0) +
+        Math.max(0, Number(plan.bonus_build) || 0);
+      const amounts: Record<QuotaKind, number> = {
+        generation: Math.max(0, Math.floor(Number(plan.generation) || 0)),
+        build: Math.floor(pack),
+        export: Math.max(0, Math.floor(Number(plan.export_quota) || 0)),
+      };
+      for (const kind of QUOTA_KINDS) {
+        const amount = Math.floor(amounts[kind]);
+        if (amount > 0) {
+          try {
+            await grantQuota(sql, String(order.user_id), kind, -amount, "adjust", `refund:${orderId}`, "撤销订单扣回");
+          } catch {
+            await audit(sql, userId, "order.refund.partial", orderId, null, { kind, note: "余额不够扣回，已结束会员" });
+          }
+        }
+      }
+    }
+    await audit(sql, userId, "order.refund", orderId, { status: "confirmed" }, { status: "refunded" });
     return { ok: true };
   }
 
