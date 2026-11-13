@@ -1,12 +1,12 @@
 # 独立部署镜像：构建 Nitro node-server 产物，运行时只需要 .output。
-FROM node:22-bookworm-slim AS build
+FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN NITRO_PRESET=node-server node scripts/with-app-env.mjs vite build
 
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8080
 # 迁移脚本和依赖（pg）随镜像带上，启动前执行 `node scripts/migrate.mjs`。
