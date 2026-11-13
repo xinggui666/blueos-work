@@ -16,7 +16,7 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --experimental-strip-types --test src/lib/blueos/logic.test.ts src/lib/generator/*.test.ts src/lib/platform/*.test.ts src/lib/protocol/*.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/blueos/logic.test.ts src/lib/generator/*.test.ts src/lib/platform/*.test.ts src/lib/protocol/*.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts android-web/storage.test.ts worker/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:template": "node --test 'scripts/**/*.test.mjs'",
@@ -32,7 +32,9 @@
     "e2e:build": "node scripts/e2e/build-rpk.mjs",
     "e2e:build-web": "node scripts/e2e/web-build.mjs",
     "e2e:admin": "node scripts/e2e/admin-api.mjs",
-    "e2e:admin-web": "node scripts/e2e/web-admin.mjs"
+    "e2e:admin-web": "node scripts/e2e/web-admin.mjs",
+    "build:android-web": "vite build -c vite.android.config.ts",
+    "e2e:android-web": "node scripts/e2e/android-web.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

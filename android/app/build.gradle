@@ -28,8 +28,12 @@ android {
         applicationId "icu.liuhua.workshop"
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 10
+        versionName "1.0.0"
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {
@@ -73,3 +77,21 @@ android {
         }
     }
 }
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    // android.jar 里的 org.json 在 JVM 单元测试中是空实现，换成真实实现
+    testImplementation "org.json:json:20240303"
+}
+
+// 内置界面由仓库根目录 `npm run build:android-web` 生成到 assets/www（不进 Git）。
+// 缺失时直接报错，避免打出一个没有界面的空壳包。
+tasks.register("checkWebAssets") {
+    doLast {
+        def index = file("src/main/assets/www/index.html")
+        if (!index.exists()) {
+            throw new GradleException("缺少内置界面 assets/www/index.html：请先在仓库根目录运行 npm ci && npm run build:android-web")
+        }
+    }
+}
+preBuild.dependsOn("checkWebAssets")
