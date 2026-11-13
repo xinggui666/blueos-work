@@ -35,7 +35,7 @@ export function buildArtifact(input: unknown): Artifact {
     })),
     notes: [
       "产物类型是 source_zip：可解压的蓝河源工程，不是 RPK，也不是官方工具链编译结果。",
-      "此环境没有运行 BlueOS Studio / Toolkit，不能把这次生成显示为构建成功。",
+      "这次生成没有在服务器上运行官方工具链；同结构的示例工程已用 blueos-toolkit 1.9.45-beta.44 在 Linux 上编译出 debug/release RPK（未经真机验证）。",
       "请在 BlueOS Studio 中新建或导入后核对目录、安装依赖，再用官方工具编译。",
       "图标是占位图，不是应用商店要求的 114×114 无白边正式图标。",
     ],
@@ -51,10 +51,11 @@ function emitFiles(dsl: Dsl): BinFile[] {
     text: body,
     data: new TextEncoder().encode(body),
   });
-  const entry = dsl.project.startPage || dsl.pages[0]?.name || "Home";
+  // 蓝河 toolkit 要求 router 的键是相对 src 的目录（如 pages/Home），否则编译报"文件路径不存在"。
+  const entry = pageUri(dsl.project.startPage || dsl.pages[0]?.name || "Home");
   const usesToast = dsl.pages.some((page) => page.components.some((component) => component.actions.some((action) => action.kind === "toast")));
   const pages: Record<string, { component: string }> = {};
-  for (const page of dsl.pages) pages[page.name] = { component: "index" };
+  for (const page of dsl.pages) pages[pageUri(page.name)] = { component: "index" };
   const manifest = {
     package: dsl.project.packageName,
     name: dsl.project.appName,
@@ -200,7 +201,7 @@ function emitNode(component: DslComponent, data: string[], methods: string[], ds
 
 function actionMethod(component: DslComponent, dsl: Dsl): string {
   const lines = component.actions.map((action) => {
-    if (action.kind === "navigate" && action.pageName) return `      router.push({ uri: ${jsString(action.pageName)} })`;
+    if (action.kind === "navigate" && action.pageName) return `      router.push({ uri: ${jsString(pageUri(action.pageName))} })`;
     if (action.kind === "back") return `      router.back()`;
     if (action.kind === "toast") return `      prompt.showToast({ message: ${jsString(action.text || "提示")} })`;
     if (action.kind === "show" && action.nodeId) return `      this.vis_${action.nodeId} = true`;
@@ -228,7 +229,7 @@ function navMarkup(dsl: Dsl, data: string[], methods: string[]): string {
     .map((item, index) => {
       const id = `nav${index}`;
       data.push(`      ${id}: ${jsString(item.label)},`);
-      methods.push(`    go_${id}() {\n      router.push({ uri: ${jsString(item.page)} })\n    },`);
+      methods.push(`    go_${id}() {\n      router.push({ uri: ${jsString(pageUri(item.page))} })\n    },`);
       return `    <input class="${id}" type="button" value="{{${id}}}" onclick="go_${id}"></input>`;
     })
     .join("\n");
@@ -522,4 +523,9 @@ function toBase64(data: Uint8Array): string {
     text += String.fromCharCode(...data.subarray(i, i + step));
   }
   return btoa(text);
+}
+
+/** 页面名 → 蓝河路由路径（相对 src 的目录）。 */
+export function pageUri(name: string): string {
+  return name.startsWith("pages/") ? name : `pages/${name}`;
 }

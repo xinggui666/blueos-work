@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { DownloadBar } from "@/components/platform/downloads";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/login")({ component: Login });
@@ -29,7 +28,7 @@ function Login() {
   }
 
   return (
-    <main className="mx-auto grid min-h-dvh w-full max-w-md place-items-center px-4 py-8 pb-40">
+    <main className="mx-auto grid min-h-dvh w-full max-w-md place-items-center px-4 py-8">
       <div className="w-full">
         <div className="flex items-center gap-3">
           <span className="grid size-11 place-items-center rounded-lg border border-line bg-surface">
@@ -84,9 +83,6 @@ function Login() {
         ) : (
           <p className="mt-6 text-sm text-muted">登录还没打开。</p>
         )}
-      </div>
-      <div className="fixed inset-x-0 bottom-0">
-        <DownloadBar />
       </div>
     </main>
   );

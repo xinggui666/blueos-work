@@ -152,7 +152,7 @@ const weight: Field = {
   ],
 };
 
-function textFields(sample: string): Field[] {
+function textFields(_sample: string): Field[] {
   return [
     { key: "text", kind: "text", label: "内容", max: 80 },
     { key: "color", kind: "color", label: "颜色" },

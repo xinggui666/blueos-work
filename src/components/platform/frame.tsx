@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { RedirectToSignIn, UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { DownloadBar } from "@/components/platform/downloads";
 import { useMe } from "@/lib/platform/client";
 
 const LINKS = [
@@ -66,7 +65,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
         <p className="border-b border-line bg-bg px-4 py-2 text-center text-xs text-muted">{data.announcements[0].title}</p>
       ) : null}
       {children}
-      <DownloadBar />
+      <div className="h-20 lg:hidden" aria-hidden />
       <nav className="glass fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line lg:hidden">
         {LINKS.map((link) => {
           const active = link.to === "/" ? path === "/" : path.startsWith(link.to);
