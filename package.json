@@ -34,7 +34,9 @@
     "e2e:admin": "node scripts/e2e/admin-api.mjs",
     "e2e:admin-web": "node scripts/e2e/web-admin.mjs",
     "build:android-web": "vite build -c vite.android.config.ts",
-    "e2e:android-web": "node scripts/e2e/android-web.mjs"
+    "e2e:android-web": "node scripts/e2e/android-web.mjs",
+    "e2e:cross-client": "node scripts/e2e/cross-client.mjs",
+    "e2e:expiry": "node scripts/e2e/expiry.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
