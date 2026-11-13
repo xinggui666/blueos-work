@@ -6,6 +6,10 @@ on:
     paths:
       - "android/**"
       - ".github/workflows/android-apk.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
 
 permissions:
   contents: read
@@ -29,11 +33,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-      - name: Assemble debug APK
+      - name: Assemble debug APK and unsigned release APK
         working-directory: android
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug assembleRelease --no-daemon
+      - name: SHA-256
+        run: sha256sum android/app/build/outputs/apk/*/*.apk
       - uses: actions/upload-artifact@v4
         with:
           name: blueos-workshop-debug
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blueos-workshop-release-unsigned
+          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error

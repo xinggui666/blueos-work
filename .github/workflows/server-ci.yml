@@ -1,0 +1,51 @@
+name: Server CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: blueos
+          POSTGRES_PASSWORD: blueos-ci
+          POSTGRES_DB: blueos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U blueos -d blueos"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://blueos:blueos-ci@127.0.0.1:5432/blueos
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
+      BETTER_AUTH_URL: http://localhost:8090
+      PORT: "8090"
+      HOST: 127.0.0.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Build node-server and migrate
+        run: npm run build:server
+      - name: API smoke test against PostgreSQL
+        run: |
+          node .output/server/index.mjs > server.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8090/api/health && break; sleep 1; done
+          API_BASE=http://127.0.0.1:8090 API_ORIGIN=http://localhost:8090 npm run test:api
+      - if: failure()
+        run: cat server.log || true
