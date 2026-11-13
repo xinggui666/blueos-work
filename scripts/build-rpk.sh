@@ -2,7 +2,8 @@
 # 用蓝河官方命令行工具链（blueos-toolkit，命令名 bot）把工坊导出的源工程 zip 编译成 RPK。
 #
 # 用法：
-#   BLUEOS_TOOLKIT_TGZ=/path/blueos-toolkit-1.9.45-beta.44.tgz \
+#   BLUEOS_TOOLKIT_DIR=/opt/blueos-toolkit         # 已用 worker/install-toolkit.sh 装好的目录（优先）
+#   或 BLUEOS_TOOLKIT_TGZ=/path/blueos-toolkit-1.9.45-beta.44.tgz  # 临时安装
 #   BLUEOS_RPK_SIGN_DIR=/path/rpk-sign            # 含 private.pem + certificate.pem；不设则只出 debug 包
 #   sh scripts/build-rpk.sh <源工程.zip> <输出目录>
 #
@@ -13,13 +14,21 @@
 set -eu
 src_zip="${1:?源工程 zip}"
 out_dir="${2:?输出目录}"
-: "${BLUEOS_TOOLKIT_TGZ:?需要 BLUEOS_TOOLKIT_TGZ 指向 blueos-toolkit 的 tgz}"
+if [ -z "${BLUEOS_TOOLKIT_DIR:-}" ] && [ -z "${BLUEOS_TOOLKIT_TGZ:-}" ]; then
+  echo "需要 BLUEOS_TOOLKIT_DIR（已安装目录）或 BLUEOS_TOOLKIT_TGZ（toolkit 的 tgz）" >&2
+  exit 2
+fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/tool" "$work/app" "$out_dir"
-( cd "$work/tool" && npm init -y >/dev/null && npm install --no-audit --no-fund --silent "$BLUEOS_TOOLKIT_TGZ" webpack@5.89.0 >/dev/null )
+if [ -n "${BLUEOS_TOOLKIT_DIR:-}" ]; then
+  bot="$BLUEOS_TOOLKIT_DIR/node_modules/.bin/bot"
+else
+  ( cd "$work/tool" && npm init -y >/dev/null && npm install --no-audit --no-fund --silent "$BLUEOS_TOOLKIT_TGZ" webpack@5.89.0 >/dev/null )
+  bot="$work/tool/node_modules/.bin/bot"
+fi
+[ -x "$bot" ] || { echo "找不到 bot 命令：$bot" >&2; exit 2; }
 ( cd "$work/app" && unzip -q "$src_zip" )
-bot="$work/tool/node_modules/.bin/bot"
 ( cd "$work/app" && "$bot" build )
 if [ -n "${BLUEOS_RPK_SIGN_DIR:-}" ]; then
   mkdir -p "$work/app/sign"

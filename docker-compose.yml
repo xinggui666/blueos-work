@@ -12,6 +12,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks: [default, internal]
     restart: unless-stopped
   db:
     image: postgres:16
@@ -25,7 +26,37 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       retries: 10
+    networks: [internal]
     restart: unless-stopped
-  # Redis 尚未接入业务（阶段 4 构建队列再启用），这里不启动，避免误以为已在使用。
+  # RPK 构建 Worker：只连数据库（任务队列就在 Postgres 里），不对外暴露端口。
+  # 工具链和 RPK 签名目录都从宿主机只读挂载，均不进仓库、不进镜像。
+  # 容器里通常不能创建用户命名空间，bwrap 会探测失败并退回 BUILD_SANDBOX=none（任务环境里如实记录）；
+  # 需要 bwrap 隔离时可以直接在宿主机用 systemd 跑 Worker（见 docs/12-构建引擎.md）。
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-blueos}:${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-blueos}
+      BUILD_TIMEOUT_SEC: ${BUILD_TIMEOUT_SEC:-300}
+      BUILD_MEMORY_MB: ${BUILD_MEMORY_MB:-1536}
+      BLUEOS_RPK_SIGN_DIR: ${BLUEOS_RPK_SIGN_DIR_IN_CONTAINER:-}
+    volumes:
+      - ${BLUEOS_TOOLKIT_HOST_DIR:-./deploy/toolkit}:/opt/blueos-toolkit:ro
+      # 需要正式签名时取消注释，并设 BLUEOS_RPK_SIGN_DIR_IN_CONTAINER=/run/rpk-sign
+      # - /path/on/host/rpk-sign:/run/rpk-sign:ro
+    networks: [internal]
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles: [build]
+  # Redis 没有使用：构建队列用 Postgres（FOR UPDATE SKIP LOCKED），不额外引入组件。
+networks:
+  internal:
+    internal: true
 volumes:
   blueos-db:

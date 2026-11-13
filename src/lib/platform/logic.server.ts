@@ -1,9 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getSql, withTransaction, type Sql } from "@/lib/db";
 import { ApiError, forbidden, notFound } from "./errors";
+import { commitQuota, ensureQuota, grantQuota, reserve } from "./quota.server";
+import { handleBuildAction, isBuildAction } from "./builds.server";
 import { checkForSave, editorProjectFrom, editorToDoc, listRevisions, loadOwnedDoc, saveDoc, type SaveResult } from "./projects.server";
 import { inspectBproj, packBproj } from "@/lib/protocol/bproj";
 import { migrateToCurrent } from "@/lib/protocol/migrate";
+import { generateNative } from "@/lib/generator/native";
 import { docToProject, type EditorProject } from "@/lib/protocol/editor";
 import { inflateRawSync } from "node:zlib";
 import { normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
@@ -88,20 +91,6 @@ async function rolesOf(sql: Sql, userId: string): Promise<string[]> {
   return rows.map((row) => row.role);
 }
 
-async function ensureQuota(sql: Sql, userId: string, kind: QuotaKind) {
-  await sql.query(
-    "insert into quota_accounts (user_id, kind, balance, reserved) values ($1,$2,0,0) on conflict (user_id, kind) do nothing",
-    [userId, kind],
-  );
-}
-
-async function ledger(sql: Sql, userId: string, kind: string, delta: number, phase: string, ref: string, note: string) {
-  await sql.query(
-    "insert into quota_ledger (id, user_id, kind, delta, phase, ref, note) values ($1,$2,$3,$4,$5,$6,$7)",
-    [id("q"), userId, kind, delta, phase, ref, note],
-  );
-}
-
 async function touchDevice(sql: Sql, userId: string, client: ClientKind) {
   try {
     await sql.query(
@@ -113,45 +102,6 @@ async function touchDevice(sql: Sql, userId: string, client: ClientKind) {
   } catch {
     // 设备表还没迁移时不挡住登录信息。
   }
-}
-
-async function grantQuota(sql: Sql, userId: string, kind: QuotaKind, amount: number, phase: "grant" | "adjust", ref: string, note: string) {
-  if (!Number.isInteger(amount) || amount === 0) return;
-  await ensureQuota(sql, userId, kind);
-  const updated = await sql.query(
-    "update quota_accounts set balance = balance + $3 where user_id = $1 and kind = $2 and balance + $3 >= reserved returning balance",
-    [userId, kind, amount],
-  );
-  if (!updated.length) throw new Error("额度不足，不能扣成负数");
-  await ledger(sql, userId, kind, amount, phase, ref, note);
-}
-
-async function reserve(sql: Sql, userId: string, kind: QuotaKind, ref: string): Promise<boolean> {
-  await ensureQuota(sql, userId, kind);
-  const updated = await sql.query(
-    "update quota_accounts set reserved = reserved + 1 where user_id = $1 and kind = $2 and balance - reserved >= 1 returning reserved",
-    [userId, kind],
-  );
-  if (!updated.length) return false;
-  await ledger(sql, userId, kind, 1, "reserve", ref, "预留 1");
-  return true;
-}
-
-async function commitQuota(sql: Sql, userId: string, kind: QuotaKind, ref: string) {
-  const updated = await sql.query(
-    "update quota_accounts set balance = balance - 1, reserved = reserved - 1 where user_id = $1 and kind = $2 and reserved >= 1 and balance >= 1 returning balance",
-    [userId, kind],
-  );
-  if (!updated.length) throw new Error("额度确认失败");
-  await ledger(sql, userId, kind, -1, "commit", ref, "确认消耗 1");
-}
-
-async function release(sql: Sql, userId: string, kind: QuotaKind, ref: string, note: string) {
-  const updated = await sql.query(
-    "update quota_accounts set reserved = reserved - 1 where user_id = $1 and kind = $2 and reserved >= 1 returning reserved",
-    [userId, kind],
-  );
-  if (updated.length) await ledger(sql, userId, kind, -1, "release", ref, note);
 }
 
 type Actor = {
@@ -451,6 +401,28 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
   });
 }
 
+/**
+ * 源工程生成（旧 DSL 入口，兼容旧客户端）：DSL 先迁移到协议 v2，再用原生生成器生成，
+ * 和 RPK 构建用同一个生成器，逻辑不会被降级丢弃。
+ */
+function nativeArtifact(dsl: unknown) {
+  const migrated = migrateToCurrent(dsl);
+  if (!migrated.ok || !migrated.doc) return { ok: false as const, issues: migrated.issues.map((i) => ({ path: i.path, message: i.message, level: i.level })) };
+  const out = generateNative(migrated.doc);
+  if (!out.ok) return { ok: false as const, issues: out.issues };
+  return {
+    ok: true as const,
+    artifactType: "source_zip" as const,
+    compiled: false as const,
+    fileName: out.fileName,
+    sha256: out.sha256,
+    zipBase64: Buffer.from(out.zip).toString("base64"),
+    files: out.files.map((f) => ({ path: f.path, bytes: f.data.length, text: f.path.endsWith("engine.js") ? undefined : f.text })),
+    notes: out.notes,
+    issues: migrated.issues.filter((i) => i.level !== "error").map((i) => ({ path: i.path, message: i.message, level: i.level })),
+  };
+}
+
 async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
   const flags = await configMap(sql);
   if (flags.generation_enabled === "false") throw new Error("生成已关闭");
@@ -479,8 +451,7 @@ async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
     [userId, key],
   );
   if (existing?.status === "succeeded" && existing.artifact) {
-    const { buildArtifact } = await import("@/lib/blueos/emit.server");
-    const again = buildArtifact(dsl);
+    const again = nativeArtifact(dsl);
     return again.ok
       ? { ...again, zipBase64: existing.exported ? again.zipBase64 : null, jobId: String(existing.id), reused: true }
       : again;
@@ -503,8 +474,7 @@ async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
     // 同一份 DSL 并发生成：后到的请求不重复扣额度。
     if (!inserted.length) throw new ApiError(409, "同样的内容正在生成，请稍后重试");
   }
-  const { buildArtifact } = await import("@/lib/blueos/emit.server");
-  const artifact = buildArtifact(dsl);
+  const artifact = nativeArtifact(dsl);
   if (!artifact.ok) {
     await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, "DSL 校验失败"]);
     return artifact;
@@ -848,19 +818,18 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     };
   }
 
-  if (action === "requestBuild") {
-    const projectId = text(body.projectId, 48);
-    const owned = await one(sql, "select id from projects where id = $1 and user_id = $2", [projectId, userId]);
-    if (!owned) throw notFound("找不到这个工程");
-    const quota = await quotaView(sql, userId);
-    if (quota.build.balance < 1) throw new Error("RPK 成品打包积分不足。编辑和保存仍然可用。购买打包积分不会解锁会员组件。");
-    const jobId = id("job");
-    const message = "当前环境尚未完成官方 RPK 工具链验证，暂不可生成成品。本次不扣 RPK 积分，也不会记成打包成功。";
-    await sql.query(
-      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'build','unavailable',$4,$5)",
-      [jobId, userId, projectId, `build:${jobId}`, message],
-    );
-    return { id: jobId, status: "unavailable", message, charged: false };
+  if (isBuildAction(action)) {
+    return handleBuildAction(sql, userId, action, body, {
+      flags: await configMap(sql),
+      palette: () => paletteFor(sql, userId, actor.roles),
+      concurrency: () => concurrencyLimit(sql, userId),
+      priority: async () => {
+        const member = await activeMembership(sql, userId);
+        if (!member) return 0;
+        const plan = await one<{ priority: number }>(sql, "select priority from plans where id = $1", [member.plan_id]);
+        return Number(plan?.priority ?? 0);
+      },
+    });
   }
 
   if (action === "releaseCheck") {
@@ -1569,6 +1538,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       kind: String(row.kind),
       delta: Number(row.delta),
       phase: String(row.phase),
+      ref: String(row.ref ?? ""),
       note: String(row.note),
       createdAt: iso(row.created_at),
     }));

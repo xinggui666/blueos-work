@@ -6,6 +6,7 @@ import { call, errorText, useCloud, useComponentLock } from "@/lib/platform/clie
 import {
   CATALOG,
   DESIGN,
+  freeSpot,
   asColor,
   catalogOf,
   snapshotOf,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/blueos/model";
 import { useStudio, useStudioHydrated } from "@/lib/blueos/store";
 import { ComponentLogic, LogicProvider, LogicWorkspace, useIssues, useProjectDoc, type Focus } from "@/components/studio/logic-editor";
+import { BuildPanel } from "@/components/studio/build-panel";
 import { DebugPanel, previewNode, useGestures, usePreview, type Preview } from "@/components/studio/preview-debug";
 import type { EditorProject } from "@/lib/protocol/editor";
 import { inspectBproj, type ImportPreview } from "@/lib/protocol/bproj";
@@ -328,8 +330,10 @@ function Library({ project, pageId, onAdded }: { project: Project; pageId: strin
                 className="min-h-11 rounded-md border border-line bg-surface-2 px-2 py-2 text-left disabled:opacity-50"
                 onClick={() => {
                   if (reason) return;
-                  const count = project.pages.find((page) => page.id === pageId)?.nodes.length ?? 0;
-                  const id = useStudio.getState().addNode(project.id, pageId, item.type, (DESIGN - item.w) / 2 + (count % 4) * 10, (DESIGN - item.h) / 2 + (count % 4) * 10);
+                  // 找一个不和现有组件重叠的位置，避免新组件叠在一起。
+                  const nodes = project.pages.find((page) => page.id === pageId)?.nodes ?? [];
+                  const spot = freeSpot(nodes, item.w, item.h, { round: project.device === "watch-round" });
+                  const id = useStudio.getState().addNode(project.id, pageId, item.type, spot.x, spot.y);
                   if (id) onAdded([id]);
                 }}
               >
@@ -1093,7 +1097,6 @@ function PackPanel({ project, doc, locate }: { project: Project; doc: ProjectDoc
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
-  const [buildNote, setBuildNote] = useState("");
   const [report, setReport] = useState<ImportPreview | null>(null);
   const issues = useIssues(doc);
   const problems = issues.filter((issue) => issue.level === "error");
@@ -1165,21 +1168,7 @@ function PackPanel({ project, doc, locate }: { project: Project; doc: ProjectDoc
         />
       </label>
       {report ? <BprojReport report={report} /> : null}
-      <p className="mt-5 text-sm font-semibold">RPK 成品</p>
-      <p className="mt-1 text-sm leading-6 text-muted">使用 BlueOS 官方工具链生成 RPK。当前环境尚未完成验证，不会显示打包成功，也不会扣 RPK 积分。</p>
-      <button
-        type="button"
-        className="mt-3 min-h-11 w-full rounded-md border border-line text-sm"
-        onClick={() => {
-          setBuildNote("");
-          void call<{ message: string }>("requestBuild", { projectId: project.id })
-            .then((outcome) => setBuildNote(outcome.message))
-            .catch((reason) => setBuildNote(errorText(reason)));
-        }}
-      >
-        申请 RPK 打包
-      </button>
-      {buildNote ? <p className="mt-2 text-sm leading-6 text-muted">{buildNote}</p> : null}
+      <BuildPanel project={project} />
       <div className="mt-6 border-t border-line pt-4">
         <p className="text-sm font-semibold">修订</p>
         <p className="mt-1 text-xs leading-5 text-muted">保存后的修订不会被后面的编辑改掉。恢复只是复制回画布。</p>

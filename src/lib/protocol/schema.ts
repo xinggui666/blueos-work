@@ -8,21 +8,8 @@ import { z } from "zod";
 
 export const PROTOCOL_FORMAT = "blueos-workshop-project" as const;
 export const SCHEMA_VERSION = 2 as const;
-export const PROTOCOL_LIMITS = {
-  pages: 12,
-  componentsPerPage: 80,
-  variables: 64,
-  events: 200,
-  actionsPerList: 50,
-  actionDepth: 6,
-  functions: 32,
-  params: 8,
-  bindings: 200,
-  timers: 8,
-  assets: 64,
-  repeatMax: 100,
-  callDepth: 8,
-} as const;
+export { PROTOCOL_LIMITS, VISIBLE_PROP } from "./limits.ts";
+import { PROTOCOL_LIMITS } from "./limits.ts";
 
 const Id = z.string().regex(/^[A-Za-z][A-Za-z0-9_-]{1,47}$/, "ID 需要 2-48 位字母数字，字母开头");
 const Name = z.string().trim().min(1).max(40);
@@ -410,5 +397,3 @@ export const BINDABLE_PROPS: Record<(typeof COMPONENT_TYPES)[number], Record<str
   hotspot: {},
 };
 
-/** 所有组件都可以绑定显示状态（visible，布尔）。 */
-export const VISIBLE_PROP = "visible";

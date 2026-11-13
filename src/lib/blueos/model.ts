@@ -449,6 +449,60 @@ export function catalogOf(type: string): CatalogItem | undefined {
   return CATALOG.find((item) => item.type === type);
 }
 
+/**
+ * 新组件的放置位置：从画面中心向外找一个不和现有组件重叠的位置。
+ * 依次尝试：留 8px 间距 → 贴边不留间距 → 重叠面积最小的位置（画面确实放满了）。
+ * 圆表只用内切圆里的区域；组件比圆还大时才退回整个方形画面。
+ */
+export function freeSpot(
+  nodes: Pick<SceneNode, "x" | "y" | "w" | "h" | "hidden">[],
+  w: number,
+  h: number,
+  opts: { round?: boolean; size?: number } = {},
+): { x: number; y: number } {
+  const size = opts.size ?? DESIGN;
+  const cx = (size - w) / 2;
+  const cy = (size - h) / 2;
+  const inCircle = (x: number, y: number) => {
+    const r = size / 2 - 4;
+    return [
+      [x, y],
+      [x + w, y],
+      [x, y + h],
+      [x + w, y + h],
+    ].every(([px, py]) => Math.hypot(px - size / 2, py - size / 2) <= r);
+  };
+  const overlap = (x: number, y: number, gap: number) =>
+    nodes.reduce((sum, n) => {
+      const ox = Math.min(x + w + gap, n.x + n.w) - Math.max(x - gap, n.x);
+      const oy = Math.min(y + h + gap, n.y + n.h) - Math.max(y - gap, n.y);
+      return ox > 0 && oy > 0 ? sum + ox * oy : sum;
+    }, 0);
+  let candidates: { x: number; y: number; d: number }[] = [];
+  for (let y = 0; y <= size - h; y += 8)
+    for (let x = 0; x <= size - w; x += 8) candidates.push({ x, y, d: Math.hypot(x - cx, y - cy) });
+  candidates.push({ x: Math.round(cx), y: Math.round(cy), d: 0 });
+  candidates.sort((a, b) => a.d - b.d);
+  if (opts.round) {
+    const visible = candidates.filter((c) => inCircle(c.x, c.y));
+    if (visible.length) candidates = visible;
+  }
+  for (const gap of [8, 0]) {
+    const hit = candidates.find((c) => overlap(c.x, c.y, gap) === 0);
+    if (hit) return { x: hit.x, y: hit.y };
+  }
+  let best = candidates[0] ?? { x: 0, y: 0, d: 0 };
+  let least = Infinity;
+  for (const c of candidates) {
+    const area = overlap(c.x, c.y, 0);
+    if (area < least) {
+      least = area;
+      best = c;
+    }
+  }
+  return { x: Math.max(0, best.x), y: Math.max(0, best.y) };
+}
+
 export function makeNode(type: CompType, x: number, y: number): SceneNode {
   const item = CATALOG_MAP[type];
   return {

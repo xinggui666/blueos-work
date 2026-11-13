@@ -24,3 +24,6 @@ android/build/
 android/local.properties
 # RPK 构建
 .rpk-work/
+
+# 蓝河工具链安装目录（来自 SDK，不进仓库）
+deploy/toolkit/
