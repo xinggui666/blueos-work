@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { getSql, withTransaction, type Sql } from "@/lib/db";
 import { ApiError, forbidden, notFound } from "./errors";
-import { SCHEMA_VERSION, normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
+import { checkForSave, editorProjectFrom, editorToDoc, listRevisions, loadOwnedDoc, saveDoc, type SaveResult } from "./projects.server";
+import { inspectBproj, packBproj } from "@/lib/protocol/bproj";
+import { migrateToCurrent } from "@/lib/protocol/migrate";
+import { docToProject, type EditorProject } from "@/lib/protocol/editor";
+import { inflateRawSync } from "node:zlib";
+import { normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
 import { CLIENTS, isSharedAction, type ClientKind } from "@/lib/contract/surface";
 import {
   CONFIG_KEYS,
@@ -310,59 +315,29 @@ async function projectCap(sql: Sql, userId: string): Promise<number> {
   return limit;
 }
 
-async function upsertProject(sql: Sql, userId: string, project: Project) {
-  const owned = await one(sql, "select id from projects where id = $1 and user_id = $2", [project.id, userId]);
-  if (!owned) {
-    const count = await one<{ count: number }>(sql, "select count(*)::int as count from projects where user_id = $1", [userId]);
-    const cap = await projectCap(sql, userId);
-    if ((count?.count ?? 0) >= cap) throw new Error(`当前权益最多保存 ${cap} 个工程。编辑已有工程不受影响。`);
-  }
-  const body = { ...project, revisions: [] };
-  const rows = await sql.query<{ id: string }>(
-    `insert into projects (id, user_id, name, app_name, package_name, device, body, updated_at)
-     values ($1,$2,$3,$4,$5,$6,$7::jsonb, now())
-     on conflict (id) do update set
-       name = excluded.name,
-       app_name = excluded.app_name,
-       package_name = excluded.package_name,
-       device = excluded.device,
-       body = excluded.body,
-       updated_at = now()
-     where projects.user_id = excluded.user_id
-     returning id`,
-    [project.id, userId, project.name, project.appName, project.packageName, project.device, JSON.stringify(body)],
+async function upsertProject(sql: Sql, userId: string, project: Project, client: ClientKind = "web"): Promise<SaveResult> {
+  // 编辑器格式先转成协议，再做和其他客户端一样的结构校验（protocolExtras 来自客户端，不能直接信任）。
+  const { doc } = checkForSave(editorToDoc(project as EditorProject));
+  const extras = (project as EditorProject).protocolExtras;
+  const result = await withTransaction((tx) =>
+    saveDoc(tx, userId, doc, { baseRevision: extras ? extras.revision : undefined, projectCap: () => projectCap(tx, userId), client }),
   );
-  if (!rows.length) throw forbidden("这个工程不属于当前账号");
+  if (!result.ok) return result;
   for (const revision of project.revisions) {
     if (!/^[a-z][a-z0-9]{6,40}$/.test(revision.id)) continue;
     await sql.query(
-      `insert into project_revisions (id, project_id, user_id, rev, note, snapshot)
-       values ($1,$2,$3, coalesce((select max(rev) from project_revisions where project_id = $2), 0) + 1, $4, $5)
+      `insert into project_revisions (id, project_id, user_id, rev, note, snapshot, source, client)
+       values ($1,$2,$3, coalesce((select max(rev) from project_revisions where project_id = $2), 0) + 1, $4, $5, 'client', $6)
        on conflict (id) do nothing`,
-      [revision.id, project.id, userId, text(revision.note, 80) || "修订", revision.snapshot],
+      [revision.id, project.id, userId, text(revision.note, 80) || "修订", revision.snapshot, client],
     );
   }
-}
-
-function projectFrom(row: Row, revisions: Revision[]): Project {
-  const body = asJson(row.body) as Project;
-  return {
-    ...body,
-    id: String(row.id),
-    name: String(row.name),
-    appName: String(row.app_name),
-    packageName: String(row.package_name),
-    device: row.device === "watch-square" ? "watch-square" : "watch-round",
-    designWidth: 466,
-    updatedAt: stamp(row.updated_at),
-    pages: Array.isArray(body.pages) ? body.pages : [],
-    revisions,
-  };
+  return result;
 }
 
 async function revisionsOf(sql: Sql, projectId: string): Promise<Revision[]> {
   const rows = await sql.query<{ id: string; note: string; snapshot: string; created_at: unknown }>(
-    "select id, note, snapshot, created_at from project_revisions where project_id = $1 order by rev desc limit 30",
+    "select id, note, snapshot, created_at from project_revisions where project_id = $1 and source = 'client' order by rev desc limit 30",
     [projectId],
   );
   return rows.map((row) => ({ id: row.id, note: row.note, snapshot: row.snapshot, at: stamp(row.created_at) }));
@@ -370,11 +345,15 @@ async function revisionsOf(sql: Sql, projectId: string): Promise<Revision[]> {
 
 async function listProjects(sql: Sql, userId: string): Promise<Project[]> {
   const rows = await sql.query<Row>(
-    "select id, name, app_name, package_name, device, body, updated_at from projects where user_id = $1 order by updated_at desc",
+    "select id, name, app_name, package_name, device, body, revision, updated_at from projects where user_id = $1 order by updated_at desc",
     [userId],
   );
   const projects: Project[] = [];
-  for (const row of rows) projects.push(projectFrom(row, await revisionsOf(sql, String(row.id))));
+  for (const row of rows) {
+    const project = editorProjectFrom(row, await revisionsOf(sql, String(row.id)));
+    if (project) projects.push(project);
+    else console.error("[projects] 无法读取工程", row.id);
+  }
   return projects;
 }
 
@@ -383,12 +362,6 @@ async function concurrencyLimit(sql: Sql, userId: string): Promise<number> {
   if (!member) return 1;
   const plan = await one<{ concurrency: number }>(sql, "select concurrency from plans where id = $1", [member.plan_id]);
   return Math.max(1, Number(plan?.concurrency ?? 1));
-}
-
-/** 工程内容的稳定摘要：去掉保存时间和修订快照，内容不变摘要就不变。 */
-function projectDigest(project: Project): string {
-  const canonical = { ...project, updatedAt: 0, revisions: [] };
-  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
 /**
@@ -403,27 +376,22 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
   const fromBody = input.project && typeof input.project === "object" ? (input.project as { id?: unknown }).id : undefined;
   const projectId = text(input.projectId ?? fromBody, 48);
   if (!projectId) throw new ApiError(400, "缺少工程编号");
-  const row = await one<Row>(
-    sql,
-    "select id, name, app_name, package_name, device, body, updated_at from projects where id = $1 and user_id = $2",
-    [projectId, userId],
-  );
-  if (!row) throw notFound("请先保存到云端，再下载工程包");
-  const project = normalizeProject({ ...projectFrom(row, []), revisions: [] });
+  const owned = await one<Row>(sql, "select id from projects where id = $1 and user_id = $2", [projectId, userId]);
+  if (!owned) throw notFound("请先保存到云端，再下载工程包");
+  const { doc, contentSha256: digest } = await loadOwnedDoc(sql, userId, projectId);
 
   const palette = await paletteFor(sql, userId, actor.roles);
   const blocked = new Set<string>();
-  for (const page of project.pages) {
-    for (const node of page.nodes) {
-      const reason = palette[node.type];
-      if (reason === undefined) blocked.add(`${node.type} 不在已上架目录`);
+  for (const page of doc.pages) {
+    for (const comp of page.components) {
+      const reason = palette[comp.type];
+      if (reason === undefined) blocked.add(`${comp.type} 不在已上架目录`);
       else if (reason) blocked.add(reason);
     }
   }
   if (blocked.size) throw forbidden(`工程里有当前账号未获授权的组件：${[...blocked].join("；")}`);
 
-  const digest = projectDigest(project);
-  const key = `bproj:${project.id}:${digest}`;
+  const key = `bproj2:${doc.project.id}:${digest}`;
   const existing = await one<Row>(
     sql,
     "select id, status, file_name, sha256, artifact, exported from jobs where user_id = $1 and idempotency_key = $2",
@@ -441,28 +409,19 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
     };
   }
 
-  const { packStoredZip } = await import("@/lib/blueos/emit.server");
-  const encoder = new TextEncoder();
-  const note = "这是可再次导入的项目工程包（.bproj），不是源码，也不是 RPK。\n里面没有平台生成器、服务端源码和商业组件实现。\n";
-  const manifest = JSON.stringify(
-    { format: "bproj", version: 1, schemaVersion: SCHEMA_VERSION, projectId: project.id, contentSha256: digest, officialBuild: false },
-    null,
-    2,
-  );
-  const zip = packStoredZip([
-    { path: "project.json", data: encoder.encode(JSON.stringify(project)) },
-    { path: "manifest.json", data: encoder.encode(manifest) },
-    { path: "README.txt", data: encoder.encode(note) },
-  ]);
+  const packed = await packBproj(doc);
+  const zip = packed.bytes;
   const zipBase64 = Buffer.from(zip).toString("base64");
-  const fileSha = createHash("sha256").update(zip).digest("hex");
-  const fileName = `${project.packageName.replace(/[^a-z0-9.]+/g, "") || "project"}.bproj`;
+  const fileSha = packed.sha256;
+  const fileName = `${doc.project.packageName.replace(/[^a-z0-9.]+/g, "") || "project"}.bproj`;
+  const project = { id: doc.project.id };
+  const revisionAt = doc.project.revision;
 
   return withTransaction(async (tx) => {
     // 并发的两次相同下载：先占位（冲突则等先到的事务提交），再加锁读取，后到的直接复用结果，不重复扣分。
     await tx.query(
-      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'export','failed',$4,'处理中') on conflict (user_id, idempotency_key) do nothing",
-      [id("job"), userId, project.id, key],
+      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message, project_revision) values ($1,$2,$3,'export','failed',$4,'处理中',$5) on conflict (user_id, idempotency_key) do nothing",
+      [id("job"), userId, project.id, key, revisionAt],
     );
     const done = await one<Row>(
       tx,
@@ -756,6 +715,49 @@ function componentCard(row: Row, installed: boolean) {
   };
 }
 
+const MAX_IMPORT_BYTES = 600_000;
+
+/**
+ * 导入 .bproj：完整性/Schema/依赖校验 → 预览；正式导入总是新建工程，绝不覆盖已有工程。
+ * 同一账号重复导入同一内容：返回已有工程（duplicate），除非 mode=copy。
+ */
+async function importBundle(sql: Sql, userId: string, body: Record<string, unknown>, client: ClientKind, previewOnly: boolean) {
+  const b64 = typeof body.fileBase64 === "string" ? body.fileBase64 : "";
+  if (!b64 || b64.length > Math.ceil((MAX_IMPORT_BYTES * 4) / 3) + 8) throw new ApiError(413, "工程包为空或过大");
+  const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+  const preview = await inspectBproj(bytes, (data) => new Uint8Array(inflateRawSync(data, { maxOutputLength: 4 * 1024 * 1024 })));
+  const existing = preview.contentSha256
+    ? await one<Row>(
+        sql,
+        `select i.project_id from project_imports i join projects p on p.id = i.project_id and p.user_id = i.user_id
+         where i.user_id = $1 and i.content_sha256 = $2
+         union all select id from projects where user_id = $1 and content_sha256 = $2 limit 1`,
+        [userId, preview.contentSha256],
+      )
+    : null;
+  const duplicateOf = existing ? String(existing.project_id ?? existing.id) : null;
+  const report = { ok: preview.ok, from: preview.from, steps: preview.steps, integrity: preview.integrity, contentSha256: preview.contentSha256, issues: preview.issues.slice(0, 100), summary: preview.summary, duplicateOf };
+  if (previewOnly) return report;
+  if (!preview.doc) throw new ApiError(400, preview.issues[0]?.message ?? "工程包无效");
+  if (preview.integrity === "failed") throw new ApiError(400, "工程包校验失败");
+  const mode = body.mode === "copy" ? "copy" : "new";
+  if (duplicateOf && mode !== "copy") return { ...report, imported: false, duplicate: true, projectId: duplicateOf };
+  const doc = structuredClone(preview.doc);
+  doc.project.id = `j${randomBytes(6).toString("hex")}`;
+  doc.project.revision = 0;
+  doc.project.createdAt = Date.now();
+  if (duplicateOf) doc.project.name = `${doc.project.name.slice(0, 34)} 副本`;
+  const saved = await withTransaction(async (tx) => {
+    const res = await saveDoc(tx, userId, doc, { projectCap: () => projectCap(tx, userId), client });
+    if (res.ok && preview.contentSha256) {
+      await tx.query("insert into project_imports (user_id, content_sha256, project_id) values ($1,$2,$3) on conflict do nothing", [userId, preview.contentSha256, doc.project.id]);
+    }
+    return res;
+  });
+  if (!saved.ok) throw new ApiError(409, "导入冲突");
+  return { ...report, imported: true, duplicate: false, projectId: doc.project.id, revision: saved.revision, project: docToProject({ ...doc, project: { ...doc.project, revision: saved.revision } }) };
+}
+
 export async function dispatch(userId: string, action: string, payload: unknown, client: ClientKind = "web"): Promise<unknown> {
   const sql = await getSql();
   const actor = await ensureActor(sql, userId);
@@ -771,9 +773,34 @@ export async function dispatch(userId: string, action: string, payload: unknown,
 
   if (action === "syncProject") {
     const project = cleanProject(body.project);
-    await upsertProject(sql, userId, project);
-    return { ok: true };
+    const result = await upsertProject(sql, userId, project, client);
+    if (!result.ok) return { ok: false, conflict: true, serverRevision: result.serverRevision, serverProject: docToProject(result.serverDoc), message: result.message };
+    return { ok: true, revision: result.revision, changed: result.changed, issues: result.issues.slice(0, 50) };
   }
+
+  if (action === "getProjectDoc") {
+    const revision = body.revision === undefined ? undefined : Number(body.revision);
+    if (revision !== undefined && (!Number.isInteger(revision) || revision < 1)) throw new ApiError(400, "修订号无效");
+    return loadOwnedDoc(sql, userId, text(body.projectId, 48), revision);
+  }
+
+  if (action === "saveProjectDoc") {
+    const { doc } = checkForSave(body.doc);
+    const baseRevision = body.baseRevision === undefined || body.baseRevision === null ? undefined : Number(body.baseRevision);
+    if (baseRevision !== undefined && (!Number.isInteger(baseRevision) || baseRevision < 0)) throw new ApiError(400, "baseRevision 无效");
+    const result = await withTransaction((tx) => saveDoc(tx, userId, doc, { baseRevision, projectCap: () => projectCap(tx, userId), client }));
+    if (!result.ok) throw new ApiError(409, result.message, { conflict: true, serverRevision: result.serverRevision, serverDoc: result.serverDoc });
+    return { ...result, issues: result.issues.slice(0, 50) };
+  }
+
+  if (action === "listRevisions") return listRevisions(sql, userId, text(body.projectId, 48));
+
+  if (action === "validateProject") {
+    const migrated = migrateToCurrent(body.doc);
+    return { ok: migrated.ok, from: migrated.from, steps: migrated.steps, issues: migrated.issues.slice(0, 100) };
+  }
+
+  if (action === "previewImport" || action === "importBundle") return importBundle(sql, userId, body, client, action === "previewImport");
 
   if (action === "deleteProject") {
     const projectId = text(body.id, 48);

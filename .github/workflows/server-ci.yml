@@ -40,6 +40,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run protocol:check
       - name: Build node-server and migrate
         run: npm run build:server
       - name: API smoke test against PostgreSQL
