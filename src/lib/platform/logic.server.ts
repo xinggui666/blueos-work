@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { getSql, type Sql } from "@/lib/db";
-import { normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
+import { getSql, withTransaction, type Sql } from "@/lib/db";
+import { ApiError, forbidden, notFound } from "./errors";
+import { SCHEMA_VERSION, normalizeProject, validateDsl, type Project, type Revision } from "@/lib/blueos/model";
 import { CLIENTS, isSharedAction, type ClientKind } from "@/lib/contract/surface";
 import {
   CONFIG_KEYS,
@@ -202,7 +203,7 @@ async function ensureActor(sql: Sql, userId: string): Promise<Actor> {
     [userId],
   );
   if (!profile) throw new Error("账号资料没有建立");
-  if (profile.status === "banned") throw new Error("账号已封禁");
+  if (profile.status === "banned") throw forbidden("账号已封禁");
   return {
     userId,
     email: user.email,
@@ -215,7 +216,7 @@ async function ensureActor(sql: Sql, userId: string): Promise<Actor> {
 }
 
 function requirePerm(actor: Actor, perm: string) {
-  if (!allows(actor.roles, perm)) throw new Error("没有权限");
+  if (!allows(actor.roles, perm)) throw forbidden();
 }
 
 async function activeMembership(sql: Sql, userId: string) {
@@ -325,7 +326,7 @@ async function upsertProject(sql: Sql, userId: string, project: Project) {
      returning id`,
     [project.id, userId, project.name, project.appName, project.packageName, project.device, JSON.stringify(body)],
   );
-  if (!rows.length) throw new Error("这个工程不属于当前账号");
+  if (!rows.length) throw forbidden("这个工程不属于当前账号");
   for (const revision of project.revisions) {
     if (!/^[a-z][a-z0-9]{6,40}$/.test(revision.id)) continue;
     await sql.query(
@@ -378,13 +379,45 @@ async function concurrencyLimit(sql: Sql, userId: string): Promise<number> {
   return Math.max(1, Number(plan?.concurrency ?? 1));
 }
 
-async function exportBundle(sql: Sql, userId: string, input: unknown) {
-  const project = cleanProject(input);
-  const owned = await one(sql, "select id from projects where id = $1 and user_id = $2", [project.id, userId]);
-  if (!owned) throw new Error("请先保存到云端，再下载工程包");
-  const body = JSON.stringify(project);
-  const digest = createHash("sha256").update(body).digest("hex");
-  const key = `bproj:${digest}`;
+/** 工程内容的稳定摘要：去掉保存时间和修订快照，内容不变摘要就不变。 */
+function projectDigest(project: Project): string {
+  const canonical = { ...project, updatedAt: 0, revisions: [] };
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
+/**
+ * 下载 .bproj 工程包。
+ * - 只打包服务端已保存的工程内容（客户端提交的内容不参与打包，防止绕过授权）。
+ * - 检查工程里每个组件当前是否有使用权限。
+ * - 同一账号、同一工程、内容未变时重复下载不重复扣分（幂等键 = 工程 id + 内容摘要）。
+ * - 预扣、确认、写流水、记任务在一个事务里完成，失败整体回滚。
+ */
+async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknown>) {
+  const userId = actor.userId;
+  const fromBody = input.project && typeof input.project === "object" ? (input.project as { id?: unknown }).id : undefined;
+  const projectId = text(input.projectId ?? fromBody, 48);
+  if (!projectId) throw new ApiError(400, "缺少工程编号");
+  const row = await one<Row>(
+    sql,
+    "select id, name, app_name, package_name, device, body, updated_at from projects where id = $1 and user_id = $2",
+    [projectId, userId],
+  );
+  if (!row) throw notFound("请先保存到云端，再下载工程包");
+  const project = normalizeProject({ ...projectFrom(row, []), revisions: [] });
+
+  const palette = await paletteFor(sql, userId, actor.roles);
+  const blocked = new Set<string>();
+  for (const page of project.pages) {
+    for (const node of page.nodes) {
+      const reason = palette[node.type];
+      if (reason === undefined) blocked.add(`${node.type} 不在已上架目录`);
+      else if (reason) blocked.add(reason);
+    }
+  }
+  if (blocked.size) throw forbidden(`工程里有当前账号未获授权的组件：${[...blocked].join("；")}`);
+
+  const digest = projectDigest(project);
+  const key = `bproj:${project.id}:${digest}`;
   const existing = await one<Row>(
     sql,
     "select id, status, file_name, sha256, artifact, exported from jobs where user_id = $1 and idempotency_key = $2",
@@ -397,41 +430,61 @@ async function exportBundle(sql: Sql, userId: string, input: unknown) {
       sha256: String(existing.sha256),
       zipBase64: String(existing.artifact),
       reused: true,
+      charged: false,
       artifactType: "bproj" as const,
     };
   }
-  const jobId = existing?.id ? String(existing.id) : id("job");
-  if (!existing) {
-    await sql.query(
-      "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'export','failed',$4,'处理中')",
-      [jobId, userId, project.id, key],
+
+  const { packStoredZip } = await import("@/lib/blueos/emit.server");
+  const encoder = new TextEncoder();
+  const note = "这是可再次导入的项目工程包（.bproj），不是源码，也不是 RPK。\n里面没有平台生成器、服务端源码和商业组件实现。\n";
+  const manifest = JSON.stringify(
+    { format: "bproj", version: 1, schemaVersion: SCHEMA_VERSION, projectId: project.id, contentSha256: digest, officialBuild: false },
+    null,
+    2,
+  );
+  const zip = packStoredZip([
+    { path: "project.json", data: encoder.encode(JSON.stringify(project)) },
+    { path: "manifest.json", data: encoder.encode(manifest) },
+    { path: "README.txt", data: encoder.encode(note) },
+  ]);
+  const zipBase64 = Buffer.from(zip).toString("base64");
+  const fileSha = createHash("sha256").update(zip).digest("hex");
+  const fileName = `${project.packageName.replace(/[^a-z0-9.]+/g, "") || "project"}.bproj`;
+
+  return withTransaction(async (tx) => {
+    // 并发的两次相同下载：后到的在这里看到先到的结果，不重复扣分。
+    const done = await one<Row>(
+      tx,
+      "select id, status, file_name, sha256, artifact, exported from jobs where user_id = $1 and idempotency_key = $2 for update",
+      [userId, key],
     );
-  }
-  const reserved = await reserve(sql, userId, "export", jobId);
-  if (!reserved) throw new Error("项目工程下载积分不足，请先获取工程下载积分");
-  try {
-    const { packStoredZip } = await import("@/lib/blueos/emit.server");
-    const encoder = new TextEncoder();
-    const note = "这是可再次导入的项目工程包（.bproj），不是源码，也不是 RPK。\n里面没有平台生成器、服务端源码和商业组件实现。\n";
-    const manifest = JSON.stringify({ format: "bproj", version: 1, sha256: digest, officialBuild: false }, null, 2);
-    const zip = packStoredZip([
-      { path: "project.json", data: encoder.encode(body) },
-      { path: "manifest.json", data: encoder.encode(manifest) },
-      { path: "README.txt", data: encoder.encode(note) },
-    ]);
-    const zipBase64 = Buffer.from(zip).toString("base64");
-    const fileName = `${project.packageName.replace(/[^a-z0-9.]+/g, "") || "project"}.bproj`;
-    await commitQuota(sql, userId, "export", jobId);
-    await sql.query(
+    if (done?.status === "succeeded" && done.exported && done.artifact) {
+      return {
+        ok: true as const,
+        fileName: String(done.file_name),
+        sha256: String(done.sha256),
+        zipBase64: String(done.artifact),
+        reused: true,
+        charged: false,
+        artifactType: "bproj" as const,
+      };
+    }
+    const jobId = done?.id ? String(done.id) : id("job");
+    if (!done) {
+      await tx.query(
+        "insert into jobs (id, user_id, project_id, kind, status, idempotency_key, message) values ($1,$2,$3,'export','failed',$4,'处理中')",
+        [jobId, userId, project.id, key],
+      );
+    }
+    if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
+    await commitQuota(tx, userId, "export", jobId);
+    await tx.query(
       `update jobs set status = 'succeeded', message = $2, file_name = $3, sha256 = $4, artifact = $5, bytes = $6, exported = true where id = $1`,
-      [jobId, "项目工程包已导出，不是 RPK", fileName, digest, zipBase64, zipBase64.length],
+      [jobId, "项目工程包已导出，不是 RPK", fileName, fileSha, zipBase64, zip.length],
     );
-    return { ok: true as const, fileName, sha256: digest, zipBase64, reused: false, artifactType: "bproj" as const };
-  } catch (error) {
-    await release(sql, userId, "export", jobId, "工程包失败，释放预留");
-    await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, "工程包导出失败"]);
-    throw error;
-  }
+    return { ok: true as const, fileName, sha256: fileSha, zipBase64, reused: false, charged: true, artifactType: "bproj" as const };
+  });
 }
 
 async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
@@ -484,47 +537,49 @@ async function runGeneration(sql: Sql, userId: string, dslInput: unknown) {
       [jobId, userId, dsl.project.id, key],
     );
   }
-  const reserved = await reserve(sql, userId, "generation", jobId);
-  if (!reserved) {
-    await sql.query("update jobs set status = 'failed', message = $2 where id = $1 and user_id = $3", [jobId, "生成额度不足", userId]);
-    throw new Error("生成额度不足");
+  const { buildArtifact } = await import("@/lib/blueos/emit.server");
+  const artifact = buildArtifact(dsl);
+  if (!artifact.ok) {
+    await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, "DSL 校验失败"]);
+    return artifact;
   }
   try {
-    const { buildArtifact } = await import("@/lib/blueos/emit.server");
-    const artifact = buildArtifact(dsl);
-    if (!artifact.ok) {
-      await release(sql, userId, "generation", jobId, "校验失败，释放预留");
-      await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, "DSL 校验失败"]);
-      return artifact;
-    }
-    await commitQuota(sql, userId, "generation", jobId);
-    let exported = false;
-    let zip: string | null = artifact.zipBase64;
-    const exportHeld = await reserve(sql, userId, "export", jobId);
-    if (!exportHeld) {
-      zip = null;
-    } else {
-      await commitQuota(sql, userId, "export", jobId);
-      exported = true;
-    }
-    await sql.query(
-      `update jobs set status = 'succeeded', message = $2, file_name = $3, sha256 = $4, artifact = $5, bytes = $6, exported = $7
-       where id = $1`,
-      [
-        jobId,
-        exported ? "source_zip 已生成，未编译" : "source_zip 已生成，导出额度不足，压缩包暂不提供",
-        artifact.fileName,
-        artifact.sha256,
-        artifact.zipBase64,
-        artifact.zipBase64.length,
-        exported,
-      ],
-    );
+    // 生成额度和导出额度的预扣、确认、流水、任务结果在同一个事务里，失败整体回滚。
+    const exported = await withTransaction(async (tx) => {
+      if (!(await reserve(tx, userId, "generation", jobId))) throw new ApiError(400, "生成额度不足");
+      await commitQuota(tx, userId, "generation", jobId);
+      let paid = false;
+      if (await reserve(tx, userId, "export", jobId)) {
+        await commitQuota(tx, userId, "export", jobId);
+        paid = true;
+      }
+      await tx.query(
+        `update jobs set status = 'succeeded', message = $2, file_name = $3, sha256 = $4, artifact = $5, bytes = $6, exported = $7
+         where id = $1`,
+        [
+          jobId,
+          paid ? "source_zip 已生成，未编译" : "source_zip 已生成，导出额度不足，压缩包暂不提供",
+          artifact.fileName,
+          artifact.sha256,
+          artifact.zipBase64,
+          artifact.zipBase64.length,
+          paid,
+        ],
+      );
+      return paid;
+    });
     const notes = exported ? artifact.notes : [...artifact.notes, "导出额度不足。生成额度已确认，压缩包先留在任务里，补足导出额度后再下载。"];
-    return { ...artifact, zipBase64: zip, notes, jobId, reused: false, compiled: false as const, artifactType: "source_zip" as const };
+    return {
+      ...artifact,
+      zipBase64: exported ? artifact.zipBase64 : null,
+      notes,
+      jobId,
+      reused: false,
+      compiled: false as const,
+      artifactType: "source_zip" as const,
+    };
   } catch (error) {
-    await release(sql, userId, "generation", jobId, "内部失败，释放预留");
-    await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, "生成失败"]);
+    await sql.query("update jobs set status = 'failed', message = $2 where id = $1", [jobId, error instanceof ApiError ? error.message : "生成失败"]);
     throw error;
   }
 }
@@ -721,7 +776,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
 
   if (action === "generate") return runGeneration(sql, userId, body.dsl);
 
-  if (action === "exportBundle") return exportBundle(sql, userId, body.project);
+  if (action === "exportBundle") return exportBundle(sql, actor, body);
 
   if (action === "listJobs") {
     const rows = await sql.query<Row>(
@@ -737,12 +792,18 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       "select * from jobs where id = $1 and user_id = $2 and kind = 'generation'",
       [text(body.id, 48), userId],
     );
-    if (!job || job.status !== "succeeded" || !job.artifact) throw new Error("没有可下载的源工程");
+    if (!job || job.status !== "succeeded" || !job.artifact) throw notFound("没有可下载的源工程");
     if (!job.exported) {
-      const held = await reserve(sql, userId, "export", String(job.id));
-      if (!held) throw new Error("导出额度不足");
-      await commitQuota(sql, userId, "export", String(job.id));
-      await sql.query("update jobs set exported = true, message = $2 where id = $1", [job.id, "source_zip 已导出，未编译"]);
+      await withTransaction(async (tx) => {
+        // 只有把 exported 从 false 改成 true 的那次请求扣分，并发重复点击不会重复扣。
+        const flipped = await tx.query("update jobs set exported = true, message = $2 where id = $1 and exported = false returning id", [
+          job.id,
+          "source_zip 已导出，未编译",
+        ]);
+        if (!flipped.length) return;
+        if (!(await reserve(tx, userId, "export", String(job.id)))) throw new ApiError(400, "导出额度不足");
+        await commitQuota(tx, userId, "export", String(job.id));
+      });
     }
     return {
       fileName: String(job.file_name),
@@ -756,7 +817,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   if (action === "requestBuild") {
     const projectId = text(body.projectId, 48);
     const owned = await one(sql, "select id from projects where id = $1 and user_id = $2", [projectId, userId]);
-    if (!owned) throw new Error("找不到这个工程");
+    if (!owned) throw notFound("找不到这个工程");
     const quota = await quotaView(sql, userId);
     if (quota.build.balance < 1) throw new Error("RPK 成品打包积分不足。编辑和保存仍然可用。购买打包积分不会解锁会员组件。");
     const jobId = id("job");
@@ -814,28 +875,26 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const found = await one<Row>(sql, "select * from license_keys where code_hash = $1", [hash]);
     if (!found) {
       await sql.query("insert into license_activations (id, key_id, user_id, result) values ($1,$2,$3,$4)", [id("la"), "missing", userId, "not_found"]);
-      throw new Error("卡密不存在");
+      throw notFound("卡密不存在");
     }
     if (found.status === "frozen") throw new Error("卡密已冻结");
     if (found.status === "void") throw new Error("卡密已作废");
-    if (found.status === "used") throw new Error("卡密已使用");
+    if (found.status === "used") throw new ApiError(409, "卡密已使用");
     if (found.expires_at && stamp(found.expires_at) < Date.now()) {
       await sql.query("update license_keys set status = 'expired' where id = $1 and status = 'unused'", [found.id]);
       throw new Error("卡密已过期");
     }
     const payload = asJson(found.payload) as Record<string, unknown>;
-    const updated = await sql.query(
-      "update license_keys set status = 'used', used_by = $2, used_at = now() where id = $1 and status = 'unused' returning id",
-      [found.id, userId],
-    );
-    if (!updated.length) throw new Error("卡密已使用");
-    try {
-      await applyKey(sql, userId, String(found.type), payload, String(found.id));
-    } catch (error) {
-      await sql.query("update license_keys set status = 'unused', used_by = null, used_at = null where id = $1 and used_by = $2", [found.id, userId]);
-      throw error;
-    }
-    await sql.query("insert into license_activations (id, key_id, user_id, result) values ($1,$2,$3,'ok')", [id("la"), found.id, userId]);
+    // 标记已用、发放权益、写兑换记录在一个事务里；发放失败时卡密自动回到未使用。
+    await withTransaction(async (tx) => {
+      const updated = await tx.query(
+        "update license_keys set status = 'used', used_by = $2, used_at = now() where id = $1 and status = 'unused' returning id",
+        [found.id, userId],
+      );
+      if (!updated.length) throw new ApiError(409, "卡密已使用");
+      await applyKey(tx, userId, String(found.type), payload, String(found.id));
+      await tx.query("insert into license_activations (id, key_id, user_id, result) values ($1,$2,$3,'ok')", [id("la"), found.id, userId]);
+    });
     return { ok: true, type: found.type };
   }
 
@@ -845,6 +904,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   }
 
   if (action === "createOrder") {
+    if ((await configMap(sql)).membership_open === "false") throw forbidden("会员购买已关闭");
     const plan = await one<Row>(sql, "select * from plans where id = $1 and active = true", [text(body.planId, 40)]);
     if (!plan) throw new Error("套餐不存在");
     const orderId = id("o");
@@ -919,7 +979,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   }
 
   if (action === "adminOverview") {
-    if (!isStaff(actor.roles)) throw new Error("没有权限");
+    if (!isStaff(actor.roles)) throw forbidden();
     const [users, members, components, pending, jobs, failed] = await Promise.all([
       one<{ count: number }>(sql, 'select count(*)::int as count from "user"'),
       one<{ count: number }>(sql, "select count(distinct user_id)::int as count from memberships where ends_at > now()"),
@@ -990,12 +1050,19 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     requirePerm(actor, "users.ban");
     const target = text(body.userId, 80);
     const status = body.status === "banned" ? "banned" : "active";
-    if (target === userId && status === "banned") throw new Error("不能封禁自己");
-    await sql.query(
-      "insert into profiles (user_id, display_name, status) values ($1,'',$2) on conflict (user_id) do update set status = excluded.status",
-      [target, status],
-    );
-    await audit(sql, userId, "user.status", target, null, { status });
+    if (target === userId && status === "banned") throw new ApiError(400, "不能封禁自己");
+    const targetRoles = await rolesOf(sql, target);
+    if (targetRoles.includes("super_admin") && !actor.roles.includes("super_admin")) throw forbidden("只有超级管理员能封禁超级管理员");
+    if (targetRoles.includes("admin") && !actor.roles.includes("super_admin")) throw forbidden("只有超级管理员能封禁管理员");
+    await withTransaction(async (tx) => {
+      await tx.query(
+        "insert into profiles (user_id, display_name, status) values ($1,'',$2) on conflict (user_id) do update set status = excluded.status",
+        [target, status],
+      );
+      // 封禁立即生效：吊销该账号所有已登录会话（网页、Android、桌面）。
+      if (status === "banned") await tx.query('delete from "session" where "userId" = $1', [target]);
+      await audit(tx, userId, "user.status", target, null, { status });
+    });
     return { ok: true };
   }
 
@@ -1027,8 +1094,10 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const kind = text(body.kind, 20) as QuotaKind;
     const delta = Math.floor(Number(body.delta));
     if (!QUOTA_KINDS.includes(kind) || !Number.isInteger(delta) || delta < -1000 || delta > 1000 || delta === 0) throw new Error("额度调整无效");
-    await grantQuota(sql, target, kind, delta, "adjust", `admin:${userId}`, text(body.note, 80) || "管理员调整");
-    await audit(sql, userId, "quota.adjust", target, null, { kind, delta });
+    await withTransaction(async (tx) => {
+      await grantQuota(tx, target, kind, delta, "adjust", `admin:${userId}`, text(body.note, 80) || "管理员调整");
+      await audit(tx, userId, "quota.adjust", target, null, { kind, delta });
+    });
     return { ok: true };
   }
 
@@ -1037,8 +1106,10 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const target = text(body.userId, 80);
     const plan = await one<Row>(sql, "select * from plans where id = $1", [text(body.planId, 40)]);
     if (!plan) throw new Error("套餐不存在");
-    await giveMembership(sql, target, plan, `admin:${userId}`);
-    await audit(sql, userId, "membership.grant", target, null, { planId: plan.id });
+    await withTransaction(async (tx) => {
+      await giveMembership(tx, target, plan, `admin:${userId}`);
+      await audit(tx, userId, "membership.grant", target, null, { planId: plan.id });
+    });
     return { ok: true };
   }
 
@@ -1276,52 +1347,68 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     requirePerm(actor, "orders.confirm");
     const orderId = text(body.id, 48);
     const decision = body.decision === "cancel" ? "cancel" : "confirm";
-    const order = await one<Row>(sql, "select * from orders where id = $1", [orderId]);
-    if (!order || order.status !== "pending") throw new Error("订单不在待确认状态");
-    if (decision === "cancel") {
-      await sql.query("update orders set status = 'cancelled', note = $2 where id = $1", [orderId, text(body.note, 200) || "已取消"]);
-      await audit(sql, userId, "order.cancel", orderId, { status: "pending" }, { status: "cancelled" });
-      return { ok: true };
-    }
-    const plan = await one<Row>(sql, "select * from plans where id = $1", [order.plan_id]);
-    if (!plan) throw new Error("套餐已不存在");
-    await giveMembership(sql, String(order.user_id), plan, `order:${orderId}`);
-    await sql.query("update orders set status = 'confirmed', note = $2 where id = $1", [orderId, text(body.note, 200) || "人工确认开通"]);
-    await audit(sql, userId, "order.confirm", orderId, { status: "pending" }, { status: "confirmed" });
+    const note = text(body.note, 200);
+    // 先用条件更新「抢占」订单状态，两个管理员同时确认时只有一个会发放权益。
+    await withTransaction(async (tx) => {
+      const next = decision === "cancel" ? "cancelled" : "confirmed";
+      const order = await one<Row>(
+        tx,
+        "update orders set status = $2, note = $3 where id = $1 and status = 'pending' returning *",
+        [orderId, next, note || (decision === "cancel" ? "已取消" : "人工确认开通")],
+      );
+      if (!order) throw new ApiError(409, "订单不在待确认状态");
+      if (decision === "confirm") {
+        const plan = await one<Row>(tx, "select * from plans where id = $1", [order.plan_id]);
+        if (!plan) throw notFound("套餐已不存在");
+        await giveMembership(tx, String(order.user_id), plan, `order:${orderId}`);
+      }
+      await audit(tx, userId, `order.${decision}`, orderId, { status: "pending" }, { status: next });
+    });
     return { ok: true };
   }
 
   if (action === "adminRefundOrder") {
     requirePerm(actor, "orders.confirm");
     const orderId = text(body.id, 48);
-    const order = await one<Row>(sql, "select * from orders where id = $1", [orderId]);
-    if (!order || order.status !== "confirmed") throw new Error("只有已开通的订单可以撤销");
-    const plan = await one<Row>(sql, "select * from plans where id = $1", [order.plan_id]);
-    await sql.query("update orders set status = 'refunded', note = $2 where id = $1", [orderId, text(body.note, 200) || "后台撤销"]);
-    await sql.query("update memberships set ends_at = now() where user_id = $1 and ends_at > now()", [order.user_id]);
-    if (plan) {
-      const pack =
-        Math.max(0, Number(plan.build_quota) || 0) +
-        Math.max(0, Number(plan.monthly_build) || 0) +
-        Math.max(0, Number(plan.bonus_build) || 0);
-      const amounts: Record<QuotaKind, number> = {
-        generation: Math.max(0, Math.floor(Number(plan.generation) || 0)),
-        build: Math.floor(pack),
-        export: Math.max(0, Math.floor(Number(plan.export_quota) || 0)),
-      };
-      for (const kind of QUOTA_KINDS) {
-        const amount = Math.floor(amounts[kind]);
-        if (amount > 0) {
-          try {
-            await grantQuota(sql, String(order.user_id), kind, -amount, "adjust", `refund:${orderId}`, "撤销订单扣回");
-          } catch {
-            await audit(sql, userId, "order.refund.partial", orderId, null, { kind, note: "余额不够扣回，已结束会员" });
-          }
-        }
+    const note = text(body.note, 200) || "后台撤销";
+    const shortfall = await withTransaction(async (tx) => {
+      const order = await one<Row>(
+        tx,
+        "update orders set status = 'refunded', note = $2 where id = $1 and status = 'confirmed' returning *",
+        [orderId, note],
+      );
+      if (!order) throw new ApiError(409, "只有已开通的订单可以撤销");
+      const target = String(order.user_id);
+      const source = `order:${orderId}`;
+      // 只结束这笔订单开通的会员段；其他订单、卡密、后台发放的会员不受影响。
+      await tx.query(
+        "update memberships set ends_at = greatest(least(ends_at, now()), starts_at) where user_id = $1 and source = $2",
+        [target, source],
+      );
+      // 按这笔订单实际发放的流水扣回；余额不够时扣到可用余额为止，并记录差额。
+      const granted = await tx.query<{ kind: QuotaKind; amount: number }>(
+        "select kind, sum(delta)::int as amount from quota_ledger where user_id = $1 and ref = $2 and phase = 'grant' group by kind",
+        [target, source],
+      );
+      const missing: Record<string, number> = {};
+      for (const row of granted) {
+        const amount = Math.max(0, Number(row.amount) || 0);
+        if (!amount) continue;
+        await ensureQuota(tx, target, row.kind);
+        const account = await one<{ balance: number; reserved: number }>(
+          tx,
+          "select balance, reserved from quota_accounts where user_id = $1 and kind = $2 for update",
+          [target, row.kind],
+        );
+        const available = Math.max(0, Number(account?.balance ?? 0) - Number(account?.reserved ?? 0));
+        const take = Math.min(amount, available);
+        if (take > 0) await grantQuota(tx, target, row.kind, -take, "adjust", `refund:${orderId}`, "撤销订单扣回");
+        if (take < amount) missing[row.kind] = amount - take;
       }
-    }
-    await audit(sql, userId, "order.refund", orderId, { status: "confirmed" }, { status: "refunded" });
-    return { ok: true };
+      await audit(tx, userId, "order.refund", orderId, { status: "confirmed" }, { status: "refunded", shortfall: missing });
+      return missing;
+    });
+    return { ok: true, shortfall };
   }
 
   if (action === "adminJobs") {

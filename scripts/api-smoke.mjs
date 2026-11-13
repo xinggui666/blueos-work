@@ -195,5 +195,53 @@ await step("流水记录 reserve/commit", async () => {
   assert.ok(phases.has("reserve") && phases.has("commit"), [...phases].join(","));
 });
 
+await step("并发重复下载同一工程只扣一次", async () => {
+  const id = pid(owner === user ? 3 : 7);
+  await call(owner, "syncProject", { project: project(id) });
+  const grant = await call(admin, "adminGrantQuota", { userId: (await call(owner, "me")).json.userId, kind: "export", delta: 3 });
+  assert.equal(grant.status, 200, JSON.stringify(grant.json));
+  const before = (await call(owner, "me")).json.quota.export.balance;
+  const results = await Promise.all([1, 2, 3].map(() => call(owner, "exportBundle", { projectId: id })));
+  assert.ok(results.every((r) => r.status === 200), results.map((r) => r.status + JSON.stringify(r.json?.error ?? "")).join(","));
+  const after = (await call(owner, "me")).json.quota.export.balance;
+  assert.equal(before - after, 1);
+});
+
+await step("订单：并发确认只开通一次，撤销只扣回本订单", async () => {
+  const buyer = await signUp(`buyer-${tag}@smoke.local`);
+  const plans = (await call(buyer, "me")).json.plans;
+  const plan = plans.find((p) => p.export > 0) || plans[0];
+  const created = await call(buyer, "createOrder", { planId: plan.id });
+  assert.equal(created.status, 200, JSON.stringify(created.json));
+  const confirms = await Promise.all([1, 2].map(() => call(admin, "adminConfirmOrder", { id: created.json.id, decision: "confirm" })));
+  assert.deepEqual(confirms.map((r) => r.status).sort(), [200, 409]);
+  const me1 = (await call(buyer, "me")).json;
+  assert.ok(me1.membership, "确认后应该有会员");
+  assert.equal(me1.quota.export.balance, plan.export);
+  const refund = await call(admin, "adminRefundOrder", { id: created.json.id });
+  assert.equal(refund.status, 200, JSON.stringify(refund.json));
+  const me2 = (await call(buyer, "me")).json;
+  assert.equal(me2.membership, null);
+  assert.equal(me2.quota.export.balance, 0);
+  assert.equal((await call(admin, "adminRefundOrder", { id: created.json.id })).status, 409);
+});
+
+await step("封禁立即吊销会话，解封后可重新登录", async () => {
+  const email = `banned-${tag}@smoke.local`;
+  const victim = await signUp(email);
+  const victimId = (await call(victim, "me")).json.userId;
+  assert.equal((await call(admin, "adminSetStatus", { userId: victimId, status: "banned" })).status, 200);
+  const after = await call(victim, "me");
+  assert.ok(after.status === 401 || after.status === 403, String(after.status));
+  assert.equal((await call(admin, "adminSetStatus", { userId: victimId, status: "active" })).status, 200);
+  const again = await signIn(email);
+  assert.equal((await call(again, "me")).status, 200);
+});
+
+await step("管理员不能封禁自己", async () => {
+  const adminId = (await call(admin, "me")).json.userId;
+  assert.equal((await call(admin, "adminSetStatus", { userId: adminId, status: "banned" })).status, 400);
+});
+
 console.log(`\n${passed} 通过，${failed} 失败（${BASE}）`);
 process.exit(failed ? 1 : 0);

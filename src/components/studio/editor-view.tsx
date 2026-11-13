@@ -1283,7 +1283,9 @@ function PackPanel({ project }: { project: Project }) {
         onClick={() => {
           setBusy(true);
           setError("");
-          void call<{ ok: boolean; fileName: string; zipBase64: string }>("exportBundle", { project })
+          // 服务端只打包已保存的内容，所以先保存当前编辑结果再下载。
+          void call("syncProject", { project })
+            .then(() => call<{ ok: boolean; fileName: string; zipBase64: string; reused?: boolean }>("exportBundle", { projectId: project.id }))
             .then((file) => {
               const bytes = Uint8Array.from(atob(file.zipBase64), (char) => char.charCodeAt(0));
               const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
@@ -1292,7 +1294,7 @@ function PackPanel({ project }: { project: Project }) {
               link.download = file.fileName;
               link.click();
               URL.revokeObjectURL(url);
-              setNote("工程包已下载");
+              setNote(file.reused ? "工程包已下载（内容未变，未重复扣分）" : "工程包已下载");
             })
             .catch((reason) => setError(errorText(reason)))
             .finally(() => setBusy(false));

@@ -48,6 +48,7 @@ const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
   __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
+  __pgPool__?: import("pg").Pool;
 };
 
 /**
@@ -94,6 +95,7 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
     const pool = new Pool({ connectionString: databaseUrl });
+    globalRef.__pgPool__ = pool;
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -111,7 +113,10 @@ async function createPgliteSql(): Promise<Sql> {
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
-    const pg = new PGlite({
+    // PGLITE_DATA_DIR 有值时把本地库存到磁盘（本地开发/演示用，重启不丢数据）；
+    // 没有值时仍是内存库。生产必须用 DATABASE_URL。
+    const dataDir = typeof process !== "undefined" ? process.env.PGLITE_DATA_DIR?.trim() : undefined;
+    const pg = new PGlite(dataDir || undefined, {
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
@@ -192,6 +197,41 @@ export function getSql(): Promise<Sql> {
     throw err;
   });
   return sqlPromise;
+}
+
+/**
+ * 在一个数据库事务里执行 `fn`。`fn` 收到的 `sql` 绑定在同一个连接/事务上，
+ * 抛错时整体回滚。事务内部只能用传进来的 `sql`，不要再调 `getSql()`
+ * （PGLite 只有一个连接，事务期间外部查询会排队等待，混用会死锁）。
+ */
+export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  await getSql();
+  if (dbSource === "neon") {
+    const pool = globalRef.__pgPool__;
+    if (!pool) throw new Error("数据库连接池没有初始化");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const tx = toSql(async <R>(text: string, params: unknown[]) => (await client.query(text, params)).rows as R[]);
+      const result = await fn(tx);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        // 连接已断开时保留原始错误。
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  const pg = await globalRef.__pgliteInstance__;
+  if (!pg) throw new Error("PGLite 没有初始化");
+  return pg.transaction(async (txn) =>
+    fn(toSql(async <R>(text: string, params: unknown[]) => (await txn.query<R>(text, params)).rows)),
+  );
 }
 
 /**
