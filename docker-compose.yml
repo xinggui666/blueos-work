@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
   # RPK 构建 Worker：只连数据库（任务队列就在 Postgres 里），不对外暴露端口。
   # 工具链和 RPK 签名目录都从宿主机只读挂载，均不进仓库、不进镜像。
-  # 容器里通常不能创建用户命名空间，bwrap 会探测失败并退回 BUILD_SANDBOX=none（任务环境里如实记录）；
+  # 容器必须支持 bwrap 用户命名空间和临时 overlay；探测失败会拒绝启动，绝不退回裸跑。
   # 需要 bwrap 隔离时可以直接在宿主机用 systemd 跑 Worker（见 docs/12-构建引擎.md）。
   worker:
     build:

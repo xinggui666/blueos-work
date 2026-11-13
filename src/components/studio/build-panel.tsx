@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Download, Hammer, RefreshCw, X } from "lucide-react";
 import { call, errorText } from "@/lib/platform/client";
+import { saveBase64 } from "@/lib/platform/save-file";
 import type { EditorProject } from "@/lib/protocol/editor";
 
 type BuildCard = {
@@ -70,15 +71,8 @@ export function BuildPanel({ project }: { project: EditorProject }) {
 
   function download(build: BuildCard) {
     void call<{ fileName: string; rpkBase64: string }>("downloadBuild", { id: build.id })
-      .then((file) => {
-        const bytes = Uint8Array.from(atob(file.rpkBase64), (c) => c.charCodeAt(0));
-        const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = file.fileName;
-        link.click();
-        URL.revokeObjectURL(url);
-      })
+      .then((file) => saveBase64(file.fileName, file.rpkBase64))
+      .then((saved) => setNote(saved ? "RPK 已保存" : "已取消保存"))
       .catch((reason) => setNote(errorText(reason)));
   }
 

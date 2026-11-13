@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { call, errorText } from "@/lib/platform/client";
+import { saveBase64 } from "@/lib/platform/save-file";
 
 type Job = { id: string; projectId: string; kind: string; status: string; message: string; fileName: string | null; sha256: string | null; exported: boolean; createdAt: string };
 
@@ -38,16 +39,8 @@ export function JobsView() {
                 onClick={() => {
                   setError("");
                   void call<{ fileName: string; zipBase64: string }>("downloadJob", { id: job.id })
-                    .then((file) => {
-                      const bytes = Uint8Array.from(atob(file.zipBase64), (char) => char.charCodeAt(0));
-                      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = file.fileName;
-                      link.click();
-                      URL.revokeObjectURL(url);
-                      load();
-                    })
+                    .then((file) => saveBase64(file.fileName, file.zipBase64, "application/zip"))
+                    .then(() => load())
                     .catch((reason) => setError(errorText(reason)));
                 }}
               >

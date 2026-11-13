@@ -5,7 +5,7 @@
  *   DATABASE_URL=postgres://...            必填
  *   BLUEOS_TOOLKIT_DIR=/opt/blueos-toolkit 必填：已安装官方 blueos-toolkit（node_modules/.bin/bot）的目录，见 worker/install-toolkit.sh
  *   BLUEOS_RPK_SIGN_DIR=/secrets/rpk-sign  可选：含 private.pem + certificate.pem 时出 release 包，否则出 debug 包
- *   BUILD_SANDBOX=auto|bwrap|none          默认 auto：bwrap 可用就用（无网络、只读系统目录），不可用时退回 none 并在任务里如实记录
+ *   BUILD_SANDBOX=auto|bwrap               两者都必须通过 bwrap 隔离探测；不可用时拒绝启动，不领取任务
  *   BUILD_TIMEOUT_SEC=300  BUILD_MEMORY_MB=1536  BUILD_WORK_DIR=系统临时目录  WORKER_ID=主机名+进程号
  *   node worker/build-worker.mjs [--once]   --once：处理完当前队列就退出（测试用）
  *
@@ -13,13 +13,14 @@
  * 不带数据库地址和任何密钥（release 签名证书只在编译期间复制进临时目录，结束即删除）；
  * 限制 CPU 时间、单文件大小、内存和总时长；产物做结构和完整性检查后才算成功。
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync, copyFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import pg from "pg";
 import { readZipEntries, verifyRpk } from "./rpk.mjs";
+import { requireSandbox } from "./sandbox.mjs";
 
 const env = process.env;
 const once = process.argv.includes("--once");
@@ -62,35 +63,21 @@ function bwrapBase(work) {
   return args;
 }
 
-function detectSandbox() {
-  const want = (env.BUILD_SANDBOX || "auto").toLowerCase();
-  if (want === "none") return "none";
-  const probe = mkdtempSync(join(WORK_ROOT, "bw-probe-"));
-  const r = spawnSync("bwrap", [...bwrapBase(probe), "--", NODE, "-e", "require('net').connect(443,'1.1.1.1').on('error',()=>process.exit(0)).on('connect',()=>process.exit(3))"], { timeout: 15000 });
-  rmSync(probe, { recursive: true, force: true });
-  if (r.status === 0) return "bwrap";
-  if (want === "bwrap") fatal(`要求使用 bwrap 沙箱，但不可用：${r.error?.message ?? r.stderr?.toString().slice(0, 300) ?? r.status}`);
-  console.warn("[worker] bwrap 不可用，编译进程不做命名空间隔离（仍有资源限制）。生产环境请用 Docker 内部网络或启用 bwrap。");
-  return "none";
+let SANDBOX;
+try {
+  SANDBOX = requireSandbox({ mode: env.BUILD_SANDBOX, workRoot: WORK_ROOT, node: NODE, baseArgs: bwrapBase });
+} catch (error) {
+  fatal(error.message);
 }
-const SANDBOX = detectSandbox();
 
 /** 在沙箱里运行 bot <command>，返回 { code, log, timedOut, killed }。 */
 function runBot(work, command, onSpawn) {
-  const inner = SANDBOX === "bwrap" ? { app: "/work/app", home: "/work/home", bot: "/toolkit/node_modules/blueos-toolkit/bin/index.js" } : { app: join(work, "app"), home: join(work, "home"), bot: BOT };
+  const inner = { app: "/work/app", home: "/work/home", bot: "/toolkit/node_modules/blueos-toolkit/bin/index.js" };
   const childEnv = { HOME: inner.home, PATH: "/usr/local/bin:/usr/bin:/bin", NODE_OPTIONS: `--max-old-space-size=${MEMORY_MB}`, LANG: "C.UTF-8", CI: "1" };
   const limited = ["prlimit", `--cpu=${TIMEOUT_SEC * 2}`, `--fsize=${200 * 1024 * 1024}`, "--nofile=4096", "--", NODE, inner.bot, command];
-  let cmd;
-  let args;
-  if (SANDBOX === "bwrap") {
-    cmd = "bwrap";
-    args = [...bwrapBase(work), "--chdir", inner.app, "--clearenv", ...Object.entries(childEnv).flatMap(([k, v]) => ["--setenv", k, v]), "--", ...limited];
-  } else {
-    cmd = limited[0];
-    args = limited.slice(1);
-  }
+  const args = [...bwrapBase(work), "--chdir", inner.app, "--clearenv", ...Object.entries(childEnv).flatMap(([k, v]) => ["--setenv", k, v]), "--", ...limited];
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd: join(work, "app"), env: SANDBOX === "bwrap" ? {} : childEnv, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const child = spawn("bwrap", args, { cwd: join(work, "app"), env: {}, stdio: ["ignore", "pipe", "pipe"], detached: true });
     let log = "";
     const add = (chunk) => {
       log += chunk.toString();

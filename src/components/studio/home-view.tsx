@@ -114,12 +114,12 @@ export function HomeView() {
       <section className="mt-6 rounded-xl border border-line bg-surface px-4 py-4">
         <h1 className="text-xl font-semibold tracking-tight">编辑免费，打包另计</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          注册后可以建页面、摆组件、预览和保存。工程包和 RPK 分开计分。下载工程包只扣工程下载积分，不会得到源码或安装包。RPK 还没经过官方工具链验证，不会显示打包成功。
+          注册后可以建页面、摆组件、预览和保存。工程包和 RPK 分开计分。下载工程包只扣工程下载积分，不会得到源码或安装包。RPK 由服务器用 BlueOS 官方工具链编译，编译成功才扣分，还没有在真机上验证。
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
           <li className="rounded-full border border-line px-3 py-1">工程包 .bproj</li>
           <li className="rounded-full border border-line px-3 py-1">设计宽度 466</li>
-          <li className="rounded-full border border-line px-3 py-1 text-warn">RPK 未验证</li>
+          <li className="rounded-full border border-line px-3 py-1 text-warn">RPK 未真机验证</li>
         </ul>
       </section>
 
@@ -183,9 +183,9 @@ export function HomeView() {
       )}
 
       {open ? (
-        <div className="fixed inset-0 z-30 grid place-items-end bg-bg/80 p-4 sm:place-items-center" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
+        <div className="fixed inset-0 z-40 grid overflow-y-auto place-items-end bg-bg/80 p-4 sm:place-items-center" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
           <form
-            className="w-full max-w-md rounded-xl border border-line bg-surface p-4"
+            className="max-h-full w-full max-w-md overflow-y-auto rounded-xl border border-line bg-surface p-4"
             onSubmit={(event) => {
               event.preventDefault();
               submit();

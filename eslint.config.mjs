@@ -11,6 +11,8 @@ export default tseslint.config(
     ignores: [
       "dist/**",
       ".output/**",
+      "android/app/src/main/assets/www/**",
+      "android/app/build/**",
       ".vercel/**",
       ".nitro/**",
       "node_modules/**",

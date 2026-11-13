@@ -18,6 +18,7 @@ import {
 import { useStudio, useStudioHydrated } from "@/lib/blueos/store";
 import { ComponentLogic, LogicProvider, LogicWorkspace, useIssues, useProjectDoc, type Focus } from "@/components/studio/logic-editor";
 import { BuildPanel } from "@/components/studio/build-panel";
+import { saveBase64 } from "@/lib/platform/save-file";
 import { DebugPanel, previewNode, useGestures, usePreview, type Preview } from "@/components/studio/preview-debug";
 import type { EditorProject } from "@/lib/protocol/editor";
 import { inspectBproj, type ImportPreview } from "@/lib/protocol/bproj";
@@ -282,7 +283,7 @@ function Workspace({ project, cloudDetail }: { project: EditorProject; cloudDeta
         })}
       </nav>
       {sheet ? (
-        <div className="glass absolute inset-x-0 bottom-14 z-20 flex max-h-[62%] flex-col rounded-t-2xl border border-line lg:hidden">
+        <div role="region" aria-label={`${MODES.find((item) => item.id === mode)?.label ?? ""}面板`} data-testid="mobile-sheet" className="glass absolute inset-x-0 bottom-14 z-20 flex max-h-[62%] flex-col rounded-t-2xl border border-line lg:hidden">
           <div className="flex items-center justify-between px-3 py-2">
             <p className="text-sm font-semibold">{MODES.find((item) => item.id === mode)?.label}</p>
             <button type="button" className="min-h-11 px-2 text-sm text-muted" onClick={() => setSheet(false)}>
@@ -1129,15 +1130,10 @@ function PackPanel({ project, doc, locate }: { project: Project; doc: ProjectDoc
           // 服务端只打包已保存的内容，所以先保存当前编辑结果再下载。
           void call("syncProject", { project })
             .then(() => call<{ ok: boolean; fileName: string; zipBase64: string; reused?: boolean }>("exportBundle", { projectId: project.id }))
-            .then((file) => {
-              const bytes = Uint8Array.from(atob(file.zipBase64), (char) => char.charCodeAt(0));
-              const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
-              const link = document.createElement("a");
-              link.href = url;
-              link.download = file.fileName;
-              link.click();
-              URL.revokeObjectURL(url);
-              setNote(file.reused ? "工程包已下载（内容未变，未重复扣分）" : "工程包已下载");
+            .then(async (file) => {
+              const saved = await saveBase64(file.fileName, file.zipBase64);
+              if (!saved) setNote(file.reused ? "已取消保存（内容未变，未重复扣分）" : "已取消保存，本次已计入下载额度，内容不变时再次下载不重复扣分");
+              else setNote(file.reused ? "工程包已下载（内容未变，未重复扣分）" : "工程包已下载");
             })
             .catch((reason) => setError(errorText(reason)))
             .finally(() => setBusy(false));
