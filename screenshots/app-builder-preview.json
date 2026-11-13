@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "BlueOS 工坊",
+      "hasCanvas": false,
+      "bodyTextLen": 140,
+      "bodyTextHash": "bc0d8f00d0437611d3bbd32821fe06f3019c1b4a4b79d74a37596d559fb2bffe",
+      "bodyTextPrefix": "BlueOS 工坊 登录后才能保存应用、兑换权益和使用后台 注册 登录 名字 邮箱 密码 创建账号 用 Google 继续 用 ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "BlueOS 工坊",
+      "hasCanvas": false,
+      "bodyTextLen": 140,
+      "bodyTextHash": "bc0d8f00d0437611d3bbd32821fe06f3019c1b4a4b79d74a37596d559fb2bffe",
+      "bodyTextPrefix": "BlueOS 工坊 登录后才能保存应用、兑换权益和使用后台 注册 登录 名字 邮箱 密码 创建账号 用 Google 继续 用 ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
