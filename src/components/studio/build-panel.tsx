@@ -28,7 +28,7 @@ type BuildCard = {
 type BuildDetail = BuildCard & { log: string; verify: { ok: boolean; checks: { name: string; ok: boolean; detail: string }[] } | null };
 
 const ACTIVE = new Set(["queued", "waiting", "running"]);
-const QUOTA_TEXT: Record<string, string> = { none: "未扣分", reserved: "已预扣 1 分", committed: "已扣 1 分", released: "预扣已退回" };
+const QUOTA_TEXT: Record<string, string> = { none: "未扣分", reserved: "已预扣 1 分", committed: "已扣 1 分", released: "预扣已退回", waived: "管理员重试，不扣分" };
 
 export function BuildPanel({ project }: { project: EditorProject }) {
   const [builds, setBuilds] = useState<BuildCard[]>([]);
