@@ -25,7 +25,8 @@
     "start": "node .output/server/index.mjs",
     "protocol:schema": "node --experimental-strip-types scripts/gen-protocol-schema.ts",
     "protocol:check": "node --experimental-strip-types scripts/gen-protocol-schema.ts --check",
-    "e2e:web": "node scripts/e2e/web-sync.mjs"
+    "e2e:web": "node scripts/e2e/web-sync.mjs",
+    "e2e:logic": "node scripts/e2e/web-logic.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

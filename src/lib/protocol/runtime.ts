@@ -35,7 +35,12 @@ export type TraceEntry = {
   kind: "event" | "action" | "call" | "var" | "error" | "warn" | "page";
   ref: string;
   message: string;
+  /** 事件执行用时（毫秒，真实耗时，不受模拟时钟影响）。 */
+  ms?: number;
 };
+
+const perfNow = () =>
+  typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 
 export type TimerState = { running: boolean; startedAt: number; elapsedMs: number; done: boolean };
 
@@ -115,6 +120,37 @@ export class Runtime {
 
   system(event: "appResume" | "appBackground") {
     this.dispatch({ kind: "system", event });
+  }
+
+  /** 导航栏等外部入口打开页面（与 navigate 动作语义相同）。 */
+  openPage(pageId: string) {
+    if (pageId === this.state.pageId || !this.doc.pages.some((p) => p.id === pageId)) return;
+    this.steps = 0;
+    this.dispatch({ kind: "page", pageId: this.state.pageId, event: "hide" });
+    this.state.stack.push(this.state.pageId);
+    this.enterPage(pageId);
+  }
+
+  /** 调试器：手动触发某个事件（忽略触发器条件，但仍检查启用状态和条件表达式）。 */
+  fire(eventId: string) {
+    const ev = this.doc.events.find((e) => e.id === eventId);
+    if (!ev) return;
+    if (!ev.enabled) {
+      this.log("warn", ev.id, "事件已停用，未执行");
+      return;
+    }
+    this.steps = 0;
+    this.runEvent(ev);
+  }
+
+  /** 调试器：直接修改变量当前值（会触发变量事件）。 */
+  setVariable(variableId: string, value: Value) {
+    this.steps = 0;
+    try {
+      this.setVar(variableId, value);
+    } catch (error) {
+      this.log("error", variableId, (error as Error).message);
+    }
   }
 
   /** 推进时间：处理计时器和时间事件。网页预览每秒调用；测试里可以直接跳到任意时间。 */
@@ -225,7 +261,15 @@ export class Runtime {
         return;
       }
       this.log("event", ev.id, `${ev.name ?? ev.id} 触发`);
-      this.runList(ev.actions, frame);
+      const t0 = perfNow();
+      try {
+        this.runList(ev.actions, frame);
+      } finally {
+        const ms = Math.round((perfNow() - t0) * 100) / 100;
+        this.trace.push({ seq: ++this.seq, at: this.clock(), kind: "event", ref: ev.id, message: `${ev.name ?? ev.id} 结束`, ms });
+        if (this.trace.length > RUNTIME_LIMITS.traceSize)
+          this.trace.splice(0, this.trace.length - RUNTIME_LIMITS.traceSize);
+      }
     } catch (error) {
       if (!(error instanceof Abort)) this.log("error", ev.id, (error as Error).message);
     }

@@ -1,8 +1,12 @@
 /**
  * 网页编辑器模型（Project）与统一协议（ProjectDoc）之间的适配。
- * 编辑器目前能直接编辑的部分映射回 Project；编辑器还不能表达的部分
- * （带参数的函数、条件事件、计时器、表达式绑定等）放在 Project.protocolExtras 里原样保留，
- * 保存时再合并回协议，保证网页 ↔ Android ↔ .bproj 往返不丢数据。
+ *
+ * 原生模式（protocolExtras.native = true，阶段 3 起的默认）：
+ *   Project 只承载外观（页面、组件、导航、元信息），全部逻辑（变量、事件、函数、计时器、绑定）
+ *   以协议 v2 原样保存在 protocolExtras 里，由逻辑编辑器直接编辑，ID 稳定、往返无损。
+ * 旧模式（v1 编辑器数据）：逻辑在 node.actions / variables / functions / timeBindings 里，
+ *   打开时用 toNative() 一次性转换成原生模式。
+ * docToLegacyProject() 把协议降级成 v1 结构，只给旧生成器（emit.server.ts）使用。
  */
 import type {
   AppAction,
@@ -41,7 +45,13 @@ export type ProtocolExtras = {
   pageTitles: Record<string, string>;
   /** 组件旋转、版本等。 */
   componentMeta: Record<string, { version: string; rotation?: number }>;
+  /** 原生模式：逻辑只存在这里。 */
+  native?: true;
+  /** 协议里没有 templateId 时为 null（Project 要求有值，往返时还原）。 */
+  templateId?: string | null;
 };
+
+export type LogicDoc = Pick<ProjectDoc, "variables" | "events" | "functions" | "timers" | "bindings">;
 
 export type EditorProject = Project & { protocolExtras?: ProtocolExtras };
 
@@ -100,7 +110,12 @@ function literalValue(src: string): string | null {
   return null;
 }
 
-export function docToProject(doc: ProjectDoc, revisions: Project["revisions"] = []): EditorProject {
+/** 协议 → v1 结构（能表达的逻辑还原成 v1 字段）。只用于旧生成器和兼容旧客户端。 */
+export function docToLegacyProject(
+  doc: ProjectDoc,
+  revisions: Project["revisions"] = [],
+  loose = false,
+): EditorProject {
   const pageName = new Map(doc.pages.map((p) => [p.id, p.name]));
   const compType = new Map<string, string>();
   doc.pages.forEach((p) => p.components.forEach((c) => compType.set(c.id, c.type)));
@@ -232,9 +247,10 @@ export function docToProject(doc: ProjectDoc, revisions: Project["revisions"] = 
       ev.enabled &&
       !ev.condition &&
       !ev.throttleMs &&
-      !ev.name &&
-      ev.id ===
-        `e-${(ev.trigger as { componentId: string }).componentId}-${ev.trigger.event}`.slice(0, 48)
+      (loose ||
+        (!ev.name &&
+          ev.id ===
+            `e-${(ev.trigger as { componentId: string }).componentId}-${ev.trigger.event}`.slice(0, 48)))
         ? backAll(ev.actions)
         : null;
     if (!converted || ev.trigger.kind !== "component") {
@@ -341,7 +357,7 @@ export function docToProject(doc: ProjectDoc, revisions: Project["revisions"] = 
   };
 }
 
-export function projectToDoc(project: EditorProject): ProjectDoc {
+function legacyProjectToDoc(project: EditorProject): ProjectDoc {
   const doc = v1EditorToV2(project, []);
   const x = project.protocolExtras;
   if (!x) return doc;
@@ -391,4 +407,152 @@ export function projectToDoc(project: EditorProject): ProjectDoc {
   doc.assets = keep(doc.assets, x.assets);
   doc.dependencies = computeDependencies(doc);
   return doc;
+}
+
+export function isNative(project: Pick<EditorProject, "protocolExtras">): boolean {
+  return project.protocolExtras?.native === true;
+}
+
+/** 协议 → 原生模式 Project：外观映射到 Project，全部逻辑原样放进 protocolExtras。 */
+export function docToProject(doc: ProjectDoc, revisions: Project["revisions"] = []): EditorProject {
+  const extras: ProtocolExtras = {
+    native: true,
+    templateId: doc.project.templateId ?? null,
+    createdAt: doc.project.createdAt,
+    revision: doc.project.revision,
+    manifest: doc.manifest,
+    variables: doc.variables,
+    events: doc.events,
+    functions: doc.functions,
+    timers: doc.timers,
+    bindings: doc.bindings,
+    assets: doc.assets,
+    pageTitles: {},
+    componentMeta: {},
+  };
+  const pages: ScenePage[] = doc.pages.map((page) => {
+    if (page.title) extras.pageTitles[page.id] = page.title;
+    return {
+      id: page.id,
+      name: page.name,
+      background: page.background,
+      nodes: page.components.map((c) => {
+        if (c.version !== "1.0.0" || c.layout.rotation)
+          extras.componentMeta[c.id] = {
+            version: c.version,
+            ...(c.layout.rotation ? { rotation: c.layout.rotation } : {}),
+          };
+        return {
+          id: c.id,
+          type: c.type,
+          name: c.name,
+          x: c.layout.x,
+          y: c.layout.y,
+          w: c.layout.w,
+          h: c.layout.h,
+          locked: c.locked,
+          hidden: c.hidden,
+          props: { ...c.props },
+          actions: [],
+        };
+      }),
+    };
+  });
+  return {
+    id: doc.project.id,
+    name: doc.project.name,
+    appName: doc.project.appName,
+    packageName: doc.project.packageName,
+    device: doc.manifest.device,
+    designWidth: 466,
+    updatedAt: doc.project.updatedAt,
+    startPageId: doc.startPageId,
+    nav: {
+      kind: doc.navigation.kind,
+      items: doc.navigation.items.map((i) => ({ id: i.id, label: i.label, pageId: i.pageId })),
+    },
+    variables: [],
+    functions: [],
+    timeBindings: [],
+    templateId: (doc.project.templateId as Project["templateId"]) ?? "blank",
+    pages,
+    revisions,
+    protocolExtras: extras,
+  };
+}
+
+/** Project → 协议。原生模式直接取 protocolExtras 里的逻辑；旧模式走 v1 转换。 */
+export function projectToDoc(project: EditorProject): ProjectDoc {
+  if (!isNative(project)) return legacyProjectToDoc(project);
+  const x = project.protocolExtras!;
+  const visual: Project = {
+    ...project,
+    variables: [],
+    functions: [],
+    timeBindings: [],
+    pages: project.pages.map((page) => ({
+      ...page,
+      nodes: page.nodes.map((node) => ({ ...node, actions: [] })),
+    })),
+  };
+  const doc = v1EditorToV2(visual, [], { logic: false });
+  if (x.templateId === null && project.templateId === "blank") delete doc.project.templateId;
+  doc.project.createdAt = x.createdAt || doc.project.createdAt;
+  doc.project.revision = x.revision || 0;
+  doc.manifest = { ...x.manifest, device: doc.manifest.device };
+  for (const page of doc.pages) {
+    if (x.pageTitles[page.id]) page.title = x.pageTitles[page.id];
+    for (const c of page.components) {
+      const meta = x.componentMeta[c.id];
+      if (meta) {
+        c.version = meta.version;
+        if (meta.rotation) c.layout.rotation = meta.rotation;
+      }
+    }
+  }
+  const pageIds = new Set(doc.pages.map((p) => p.id));
+  const compIds = new Set(doc.pages.flatMap((p) => p.components.map((c) => c.id)));
+  // 删掉的组件/页面：挂在它们身上的事件、绑定、局部变量一起去掉；动作里的悬空引用留给校验器报错。
+  doc.variables = x.variables.filter(
+    (v) =>
+      v.scope === "global" || (v.ownerId && (pageIds.has(v.ownerId) || compIds.has(v.ownerId))),
+  );
+  doc.events = x.events.filter((e) =>
+    e.trigger.kind === "component"
+      ? compIds.has(e.trigger.componentId)
+      : e.trigger.kind === "page"
+        ? pageIds.has(e.trigger.pageId)
+        : true,
+  );
+  doc.functions = x.functions;
+  doc.timers = x.timers;
+  doc.bindings = x.bindings.filter((b) => compIds.has(b.componentId));
+  doc.assets = x.assets;
+  doc.dependencies = computeDependencies(doc);
+  return doc;
+}
+
+/** 旧模式工程转成原生模式（打开、导入、同步时调用；已经是原生的原样返回）。 */
+export function toNative<T extends EditorProject>(project: T): EditorProject {
+  if (isNative(project)) return project;
+  const next = docToProject(projectToDoc(project), project.revisions);
+  next.updatedAt = project.updatedAt;
+  return next;
+}
+
+/** 取出工程逻辑（原生模式）。 */
+export function logicOf(project: EditorProject): LogicDoc {
+  const doc = projectToDoc(project);
+  return {
+    variables: doc.variables,
+    events: doc.events,
+    functions: doc.functions,
+    timers: doc.timers,
+    bindings: doc.bindings,
+  };
+}
+
+/** 给旧生成器用：协议 → v1 Project。 */
+export function legacyForGenerator(project: EditorProject): EditorProject {
+  return docToLegacyProject(projectToDoc(project), project.revisions, true);
 }

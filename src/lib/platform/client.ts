@@ -6,7 +6,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { OFFICIAL_ACCESS } from "./policy";
 import { type ClientKind } from "@/lib/contract/surface";
 import { platform } from "./functions";
-import { docToProject, projectToDoc } from "@/lib/protocol/editor";
+import { projectToDoc, toNative } from "@/lib/protocol/editor";
 import { uid } from "@/lib/blueos/model";
 
 export function call<T>(action: string, payload?: unknown, client: ClientKind = "web"): Promise<T> {
@@ -150,9 +150,11 @@ export function CloudSync() {
         void flush();
         return;
       }
-      const extras = project.protocolExtras ?? docToProject(projectToDoc(project)).protocolExtras;
+      // 本地工程总是原生协议模式（旧数据在 toNative 时转换），修订号记在 protocolExtras。
+      const base = toNative(project) as Project;
+      const extras = base.protocolExtras;
       if (extras && extras.revision !== result.revision) {
-        const updated = { ...project, protocolExtras: { ...extras, revision: result.revision } };
+        const updated = { ...base, protocolExtras: { ...extras, revision: result.revision } };
         applying = true;
         useStudio.getState().setHydrated(useStudio.getState().projects.map((p) => (p.id === project.id && contentKey(p) === contentKey(project) ? updated : p)));
         applying = false;

@@ -1114,6 +1114,26 @@ export function snapshotOf(project: Project): string {
     startPageId: project.startPageId,
     nav: project.nav,
     variables: project.variables,
+    functions: project.functions,
+    timeBindings: project.timeBindings,
     pages: project.pages,
+    // 原生协议逻辑也进快照，逻辑编辑可以撤销；服务端修订号不算内容。
+    protocolExtras: project.protocolExtras ? { ...project.protocolExtras, revision: 0 } : undefined,
+  });
+}
+
+/** 从快照恢复内容，保留编号、修订历史和服务端修订号。 */
+export function restoreSnapshot(project: Project, snapshot: string): Project {
+  const data = JSON.parse(snapshot) as Partial<Project>;
+  const extras = data.protocolExtras
+    ? { ...data.protocolExtras, revision: project.protocolExtras?.revision ?? 0 }
+    : project.protocolExtras;
+  return normalizeProject({
+    ...project,
+    ...data,
+    ...(extras ? { protocolExtras: extras } : {}),
+    id: project.id,
+    revisions: project.revisions,
+    updatedAt: Date.now(),
   });
 }
