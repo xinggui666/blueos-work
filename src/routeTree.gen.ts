@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as DeveloperRouteImport } from './routes/developer'
-import { Route as DuelRouteImport } from './routes/duel'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MarketRouteImport } from './routes/market'
@@ -40,11 +39,6 @@ const AdminRoute = AdminRouteImport.update({
 const DeveloperRoute = DeveloperRouteImport.update({
   id: '/developer',
   path: '/developer',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DuelRoute = DuelRouteImport.update({
-  id: '/duel',
-  path: '/duel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
@@ -88,7 +82,6 @@ export interface FileRoutesByFullPath {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/developer': typeof DeveloperRoute
-  '/duel': typeof DuelRoute
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
@@ -102,7 +95,6 @@ export interface FileRoutesByTo {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/developer': typeof DeveloperRoute
-  '/duel': typeof DuelRoute
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
@@ -117,7 +109,6 @@ export interface FileRoutesById {
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
   '/developer': typeof DeveloperRoute
-  '/duel': typeof DuelRoute
   '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/market': typeof MarketRoute
@@ -133,7 +124,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/developer'
-    | '/duel'
     | '/jobs'
     | '/login'
     | '/market'
@@ -147,7 +137,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/developer'
-    | '/duel'
     | '/jobs'
     | '/login'
     | '/market'
@@ -161,7 +150,6 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/developer'
-    | '/duel'
     | '/jobs'
     | '/login'
     | '/market'
@@ -176,7 +164,6 @@ export interface RootRouteChildren {
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
   DeveloperRoute: typeof DeveloperRoute
-  DuelRoute: typeof DuelRoute
   JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
   MarketRoute: typeof MarketRoute
@@ -214,13 +201,6 @@ declare module '@tanstack/react-router' {
       path: '/developer'
       fullPath: '/developer'
       preLoaderRoute: typeof DeveloperRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/duel': {
-      id: '/duel'
-      path: '/duel'
-      fullPath: '/duel'
-      preLoaderRoute: typeof DuelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jobs': {
@@ -280,7 +260,6 @@ const rootRouteChildren: RootRouteChildren = {
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
   DeveloperRoute: DeveloperRoute,
-  DuelRoute: DuelRoute,
   JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,
   MarketRoute: MarketRoute,

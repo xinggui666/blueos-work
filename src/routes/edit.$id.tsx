@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RequireUser } from "@/components/platform/frame";
-import { DownloadBar } from "@/components/platform/downloads";
 import { EditorView } from "@/components/studio/editor-view";
 
 export const Route = createFileRoute("/edit/$id")({
@@ -15,7 +14,6 @@ function EditorRoute() {
         <div className="min-h-0 flex-1">
           <EditorView projectId={id} />
         </div>
-        <DownloadBar />
       </div>
     </RequireUser>
   );
