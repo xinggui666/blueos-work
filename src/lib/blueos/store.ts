@@ -107,7 +107,10 @@ export const useStudio = create<Studio>()(
       },
       importProject: (input) => {
         const project = normalizeProject((input ?? {}) as Partial<Project>);
-        if (get().projects.some((item) => item.id === project.id)) project.id = uid("j");
+        // 导入总是新建工程，不覆盖已有工程（规格 4.3）。
+        // 总是分配新编号：别人的工程包里的编号在云端可能属于其他账号。
+        project.id = uid("j");
+        if (project.protocolExtras) project.protocolExtras = { ...project.protocolExtras, revision: 0 };
         project.updatedAt = Date.now();
         set({ projects: [project, ...get().projects] });
         return project.id;

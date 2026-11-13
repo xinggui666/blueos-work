@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
 function Login() {
-  const navigate = useNavigate();
   const [mode, setMode] = useState<"in" | "up">("up");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,7 +23,8 @@ function Login() {
       setError(result.error.message || "登录失败");
       return;
     }
-    void navigate({ to: "/" });
+    // 整页跳转：避免会话状态尚未刷新时首页把刚登录的用户又送回登录页。
+    window.location.assign("/");
   }
 
   return (

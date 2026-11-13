@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireUserId } from "@/lib/auth/verify.server";
 import { isClient } from "@/lib/contract/surface";
-import { statusOf } from "@/lib/platform/errors";
+import { ApiError, statusOf } from "@/lib/platform/errors";
 
 /** 请求体上限。工程本身限制 400KB，这里留出 JSON 包装和修订快照的余量。 */
 const MAX_BODY_BYTES = 1_000_000;
@@ -36,7 +36,8 @@ export const Route = createFileRoute("/api/v1/platform")({
           const status = statusOf(error);
           if (!(error instanceof Error)) console.error("[api/v1/platform]", error);
           const message = status === 401 ? "Unauthorized" : error instanceof Error ? error.message : "失败";
-          return Response.json({ error: message }, { status });
+          const data = error instanceof ApiError && error.data ? error.data : {};
+          return Response.json({ ...data, error: message }, { status });
         }
       },
     },

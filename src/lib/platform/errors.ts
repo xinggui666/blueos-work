@@ -3,9 +3,12 @@ export type ApiStatus = 400 | 401 | 403 | 404 | 409 | 413 | 429;
 
 export class ApiError extends Error {
   readonly status: ApiStatus;
-  constructor(status: ApiStatus, message: string) {
+  /** 随错误一起返回给客户端的结构化数据（例如冲突时的服务端版本）。 */
+  readonly data?: Record<string, unknown>;
+  constructor(status: ApiStatus, message: string, data?: Record<string, unknown>) {
     super(message);
     this.status = status;
+    this.data = data;
     this.name = "ApiError";
   }
 }

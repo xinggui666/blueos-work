@@ -124,7 +124,7 @@ await step("免费用户最多 3 个工程", async () => {
   assert.equal((await call(user, "syncProject", { project: project(pid(2)) })).status, 200);
   assert.equal((await call(user, "syncProject", { project: project(pid(3)) })).status, 200);
   const r = await call(user, "syncProject", { project: project(pid(4)) });
-  assert.equal(r.status, 400);
+  assert.equal(r.status, 403);
   assert.match(r.json.error, /最多保存 3 个工程/);
 });
 
@@ -241,6 +241,127 @@ await step("封禁立即吊销会话，解封后可重新登录", async () => {
 await step("管理员不能封禁自己", async () => {
   const adminId = (await call(admin, "me")).json.userId;
   assert.equal((await call(admin, "adminSetStatus", { userId: adminId, status: "banned" })).status, 400);
+});
+
+/* ---------------- 统一协议 v2 ---------------- */
+const proto = await signUp(`proto-${tag}@smoke.local`);
+const ppid = `q${tag}`.replace(/[^a-z0-9]/g, "").padEnd(8, "0");
+let doc = null;
+
+await step("旧版编辑器格式保存后，以协议 v2 读取（修订 1）", async () => {
+  const s1 = await call(proto, "syncProject", { project: project(ppid) });
+  assert.equal(s1.status, 200, JSON.stringify(s1.json));
+  assert.equal(s1.json.revision, 1);
+  const r = await call(proto, "getProjectDoc", { projectId: ppid });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.doc.format, "blueos-workshop-project");
+  assert.equal(r.json.doc.schemaVersion, 2);
+  assert.equal(r.json.revision, 1);
+  assert.match(r.json.contentSha256, /^[0-9a-f]{64}$/);
+  doc = r.json.doc;
+});
+
+await step("内容不变不产生新修订；内容变化修订 +1", async () => {
+  const same = await call(proto, "saveProjectDoc", { doc, baseRevision: 1 });
+  assert.equal(same.status, 200, JSON.stringify(same.json));
+  assert.equal(same.json.changed, false);
+  assert.equal(same.json.revision, 1);
+  doc.variables.push({ id: "vcount", key: "count", type: "int", default: 0, scope: "global", persist: false });
+  doc.events.push({ id: "eclick", enabled: true, trigger: { kind: "component", componentId: "n1", event: "click" }, condition: "count < 5", actions: [{ id: "ainc", kind: "setVar", variableId: "vcount", value: "count + 1" }] });
+  const r = await call(proto, "saveProjectDoc", { doc, baseRevision: 1 });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.revision, 2);
+  assert.deepEqual(r.json.issues.filter((i) => i.level === "error"), []);
+});
+
+await step("基于旧修订保存不同内容 → 409，返回云端版本，不覆盖", async () => {
+  const stale = structuredClone(doc);
+  stale.project.name = "另一台设备";
+  const r = await call(proto, "saveProjectDoc", { doc: stale, baseRevision: 1 });
+  assert.equal(r.status, 409, JSON.stringify(r.json));
+  assert.equal(r.json.conflict, true);
+  assert.equal(r.json.serverRevision, 2);
+  assert.equal(r.json.serverDoc.events.length, 1);
+  const now = await call(proto, "getProjectDoc", { projectId: ppid });
+  assert.equal(now.json.doc.project.name, "冒烟");
+});
+
+await step("网页编辑器格式往返保留协议扩展内容（条件事件）", async () => {
+  const list = await call(proto, "listProjects");
+  const p = list.json.find((x) => x.id === ppid);
+  assert.ok(p?.protocolExtras, "缺少 protocolExtras");
+  assert.equal(p.protocolExtras.revision, 2);
+  p.name = "网页改名";
+  const s = await call(proto, "syncProject", { project: p });
+  assert.equal(s.status, 200, JSON.stringify(s.json));
+  assert.equal(s.json.revision, 3);
+  const r = await call(proto, "getProjectDoc", { projectId: ppid });
+  assert.equal(r.json.doc.events[0].condition, "count < 5");
+  assert.equal(r.json.doc.project.name, "网页改名");
+});
+
+await step("网页旧修订保存 → 返回冲突和云端工程，不覆盖", async () => {
+  const list = await call(proto, "listProjects");
+  const p = list.json.find((x) => x.id === ppid);
+  p.protocolExtras.revision = 1;
+  p.name = "旧标签页";
+  const s = await call(proto, "syncProject", { project: p });
+  assert.equal(s.status, 200);
+  assert.equal(s.json.conflict, true);
+  assert.equal(s.json.serverProject.name, "网页改名");
+});
+
+await step("可以读取历史修订和修订列表", async () => {
+  const revs = await call(proto, "listRevisions", { projectId: ppid });
+  assert.equal(revs.status, 200);
+  assert.deepEqual(revs.json.filter((r) => r.source === "save").map((r) => r.revision), [3, 2, 1]);
+  const old = await call(proto, "getProjectDoc", { projectId: ppid, revision: 1 });
+  assert.equal(old.json.doc.events.length, 0);
+  assert.equal((await call(other, "getProjectDoc", { projectId: ppid })).status, 404);
+  assert.equal((await call(other, "listRevisions", { projectId: ppid })).status, 404);
+});
+
+await step("结构错误的协议文档保存返回 400", async () => {
+  const bad = structuredClone(doc);
+  bad.pages[0].components[0].layout = "x";
+  const r = await call(proto, "saveProjectDoc", { doc: bad, baseRevision: 3 });
+  assert.equal(r.status, 400, JSON.stringify(r.json));
+});
+
+await step("validateProject 报告语义错误", async () => {
+  const bad = structuredClone(doc);
+  bad.events[0].actions.push({ id: "anav", kind: "navigate", pageId: "nopage" });
+  const r = await call(proto, "validateProject", { doc: bad });
+  assert.equal(r.status, 200);
+  assert.equal(r.json.ok, false);
+  assert.ok(r.json.issues.some((i) => /页面不存在/.test(i.message)));
+});
+
+await step(".bproj v2：导出 → 预览 → 导入为新工程；重复导入识别；篡改拒绝", async () => {
+  const meId = (await call(proto, "me")).json.userId;
+  assert.equal((await call(admin, "adminGrantQuota", { userId: meId, kind: "export", delta: 2 })).status, 200);
+  const ex = await call(proto, "exportBundle", { projectId: ppid });
+  assert.equal(ex.status, 200, JSON.stringify(ex.json));
+  const pv = await call(proto, "previewImport", { fileBase64: ex.json.zipBase64 });
+  assert.equal(pv.status, 200, JSON.stringify(pv.json));
+  assert.equal(pv.json.integrity, "verified");
+  assert.equal(pv.json.summary.events, 1);
+  assert.equal(pv.json.duplicateOf, ppid);
+  const dup = await call(proto, "importBundle", { fileBase64: ex.json.zipBase64 });
+  assert.equal(dup.json.duplicate, true);
+  // 删一个工程腾出名额，再以副本导入
+  const copy = await call(proto, "importBundle", { fileBase64: ex.json.zipBase64, mode: "copy" });
+  assert.equal(copy.status, 200, JSON.stringify(copy.json));
+  assert.equal(copy.json.imported, true);
+  assert.notEqual(copy.json.projectId, ppid);
+  const bytes = Buffer.from(ex.json.zipBase64, "base64");
+  const i = bytes.indexOf(Buffer.from("网页改名"));
+  bytes[i + 1] ^= 1;
+  const bad = await call(proto, "previewImport", { fileBase64: bytes.toString("base64") });
+  assert.equal(bad.json.ok, false);
+  assert.equal(bad.json.integrity, "failed");
+  const badImport = await call(proto, "importBundle", { fileBase64: bytes.toString("base64"), mode: "copy" });
+  assert.equal(badImport.status, 400);
 });
 
 console.log(`\n${passed} 通过，${failed} 失败（${BASE}）`);

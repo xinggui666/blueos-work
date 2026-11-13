@@ -109,6 +109,8 @@ export type Project = {
   templateId: TemplateId;
   pages: ScenePage[];
   revisions: Revision[];
+  /** 统一协议里编辑器暂时不能直接编辑的部分，原样保留（见 src/lib/protocol/editor.ts）。 */
+  protocolExtras?: import("../protocol/editor").ProtocolExtras;
 };
 
 export type Field =
@@ -944,6 +946,7 @@ export function normalizeProject(input: Partial<Project>): Project {
     templateId: input.templateId === "tabs" || input.templateId === "settings" || input.templateId === "data" ? input.templateId : "blank",
     pages,
     revisions: input.revisions || [],
+    ...(input.protocolExtras && typeof input.protocolExtras === "object" ? { protocolExtras: input.protocolExtras } : {}),
   };
 }
 

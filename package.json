@@ -16,13 +16,16 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --experimental-strip-types --test src/lib/blueos/emit.test.ts src/lib/blueos/logic.test.ts src/lib/platform/*.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/blueos/emit.test.ts src/lib/blueos/logic.test.ts src/lib/platform/*.test.ts src/lib/protocol/*.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:template": "node --test 'scripts/**/*.test.mjs'",
     "test:api": "node scripts/api-smoke.mjs",
     "build:server": "NITRO_PRESET=node-server node scripts/with-app-env.mjs vite build && npm run db:migrate",
-    "start": "node .output/server/index.mjs"
+    "start": "node .output/server/index.mjs",
+    "protocol:schema": "node --experimental-strip-types scripts/gen-protocol-schema.ts",
+    "protocol:check": "node --experimental-strip-types scripts/gen-protocol-schema.ts --check",
+    "e2e:web": "node scripts/e2e/web-sync.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

@@ -2,7 +2,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { WatchFace } from "@/components/studio/face";
-import { readBproj } from "@/lib/blueos/bproj";
+import { inspectBproj, type ImportPreview } from "@/lib/protocol/bproj";
+import { browserInflate } from "@/lib/protocol/zip";
+import { migrateToCurrent } from "@/lib/protocol/migrate";
+import { docToProject } from "@/lib/protocol/editor";
+import { contentKey } from "@/lib/platform/client";
 import type { DeviceShape, TemplateId } from "@/lib/blueos/model";
 import { useStudio, useStudioHydrated } from "@/lib/blueos/store";
 import { useCloud } from "@/lib/platform/client";
@@ -76,10 +80,31 @@ export function HomeView() {
             const file = event.target.files?.[0];
             event.target.value = "";
             if (!file) return;
-            void file.arrayBuffer().then((buffer) => {
+            void file.arrayBuffer().then(async (buffer) => {
               const bytes = new Uint8Array(buffer);
-              const raw = file.name.endsWith(".json") ? JSON.parse(new TextDecoder().decode(bytes)) : readBproj(bytes);
-              const id = importProject(raw);
+              let preview: Pick<ImportPreview, "ok" | "doc" | "issues" | "integrity" | "summary">;
+              if (file.name.endsWith(".json")) {
+                const res = migrateToCurrent(JSON.parse(new TextDecoder().decode(bytes)));
+                preview = { ok: res.ok, doc: res.doc, issues: res.issues, integrity: "legacy", summary: null };
+              } else preview = await inspectBproj(bytes, browserInflate);
+              const errors = preview.issues.filter((issue) => issue.level === "error");
+              if (!preview.doc || preview.integrity === "failed") {
+                setError(`不能导入：${errors.slice(0, 3).map((issue) => issue.message).join("；") || "文件无效"}`);
+                return;
+              }
+              const project = docToProject(preview.doc);
+              const key = contentKey(project);
+              const same = useStudio.getState().projects.find((item) => contentKey(item) === key);
+              const lines = [
+                `工程：${preview.doc.project.name}（${preview.doc.project.packageName}）`,
+                `页面 ${preview.doc.pages.length} 个，组件 ${preview.doc.pages.reduce((n, page) => n + page.components.length, 0)} 个，事件 ${preview.doc.events.length} 个，函数 ${preview.doc.functions.length} 个`,
+                preview.integrity === "verified" ? "完整性校验：通过" : "旧版工程包：没有校验信息",
+                errors.length ? `有 ${errors.length} 个问题需要导入后修复：${errors.slice(0, 2).map((issue) => issue.message).join("；")}` : "",
+                same ? `已存在内容相同的工程“${same.name}”，继续将导入为新副本` : "",
+                "导入会新建工程，不会覆盖已有工程。继续吗？",
+              ].filter(Boolean);
+              if (!window.confirm(lines.join("\n"))) return;
+              const id = importProject({ ...project, protocolExtras: project.protocolExtras ? { ...project.protocolExtras, revision: 0 } : undefined, name: same ? `${project.name.slice(0, 34)} 副本` : project.name });
               void navigate({ to: "/edit/$id", params: { id } });
             }).catch(() => setError("这个文件不能导入。请使用本站下载的工程包。"));
           }}

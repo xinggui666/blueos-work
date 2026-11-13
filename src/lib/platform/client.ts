@@ -6,6 +6,8 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { OFFICIAL_ACCESS } from "./policy";
 import { type ClientKind } from "@/lib/contract/surface";
 import { platform } from "./functions";
+import { docToProject, projectToDoc } from "@/lib/protocol/editor";
+import { uid } from "@/lib/blueos/model";
 
 export function call<T>(action: string, payload?: unknown, client: ClientKind = "web"): Promise<T> {
   return platform({ data: { action, payload: payload ?? {}, client } }) as Promise<T>;
@@ -57,16 +59,65 @@ export function useComponentLock() {
   };
 }
 
-function merge(local: Project, remote?: Project): Project {
-  if (!remote) return local;
-  const localRev = new Map(local.revisions.map((revision) => [revision.id, revision]));
-  const remoteRev = new Map(remote.revisions.map((revision) => [revision.id, revision]));
-  const revisions = local.updatedAt >= remote.updatedAt
-    ? [...local.revisions, ...remote.revisions.filter((revision) => !localRev.has(revision.id))].slice(0, 30)
-    : [...remote.revisions, ...local.revisions.filter((revision) => !remoteRev.has(revision.id))].slice(0, 30);
-  const newer = local.updatedAt >= remote.updatedAt ? local : remote;
-  return { ...newer, revisions };
+/** 本机最后一次与云端确认一致的内容（按工程），用于判断离线修改和冲突。 */
+const SYNC_KEY = "blueos-sync-state-v2";
+type SyncMark = { revision: number; key: string };
+function readMarks(): Record<string, SyncMark> {
+  try {
+    return JSON.parse(localStorage.getItem(SYNC_KEY) || "{}") as Record<string, SyncMark>;
+  } catch {
+    return {};
+  }
 }
+function writeMark(id: string, mark: SyncMark | null) {
+  const marks = readMarks();
+  if (mark) marks[id] = mark;
+  else delete marks[id];
+  try {
+    localStorage.setItem(SYNC_KEY, JSON.stringify(marks));
+  } catch {
+    // 存储满时不影响编辑
+  }
+}
+
+/** 只看内容：忽略保存时间、本地快照和修订号。 */
+export function contentKey(project: Project): string {
+  try {
+    const doc = projectToDoc(project);
+    return JSON.stringify({ ...doc, project: { ...doc.project, createdAt: 0, updatedAt: 0, revision: 0 } });
+  } catch {
+    const { updatedAt: _u, revisions: _r, ...rest } = project;
+    return JSON.stringify(rest);
+  }
+}
+
+function revisionOf(project?: Project): number {
+  return project?.protocolExtras?.revision ?? 0;
+}
+
+function conflictCopy(local: Project): Project {
+  return { ...structuredClone(local), id: uid("j"), name: `${local.name.slice(0, 30)}（本机冲突副本）`, updatedAt: Date.now(), revisions: [], protocolExtras: local.protocolExtras ? { ...local.protocolExtras, revision: 0 } : undefined };
+}
+
+/**
+ * 启动时合并本地与云端（规格 4.3：冲突保留双方，不直接覆盖较新数据）。
+ * - 本地没改过（内容等于上次同步）→ 用云端。
+ * - 本地改过、云端没变 → 用本地（随后上传）。
+ * - 两边都改过 → 云端为主版本，本地另存为“冲突副本”。
+ */
+function merge(local: Project, remote: Project | undefined, mark: SyncMark | undefined): Project[] {
+  if (!remote) return [local];
+  const revisions = [...local.revisions, ...remote.revisions.filter((r) => !local.revisions.some((x) => x.id === r.id))].slice(0, 30);
+  const localDirty = !mark || mark.key !== contentKey(local);
+  const remoteMoved = !mark || revisionOf(remote) > mark.revision;
+  if (!localDirty) return [{ ...remote, revisions }];
+  if (contentKey(local) === contentKey(remote)) return [{ ...remote, revisions }];
+  if (!remoteMoved) return [{ ...local, revisions, protocolExtras: local.protocolExtras ? { ...local.protocolExtras, revision: revisionOf(remote) } : local.protocolExtras }];
+  // 两边内容不同且云端已前进（或旧版本地数据没有同步记录）：云端为主版本，本机另存副本，避免丢数据。
+  return [{ ...remote, revisions }, conflictCopy(local)];
+}
+
+type SyncResult = { ok: true; revision: number; changed: boolean } | { ok: false; conflict: true; serverRevision: number; serverProject: Project; message: string };
 
 export function CloudSync() {
   const { user } = useCurrentUserState();
@@ -84,9 +135,30 @@ export function CloudSync() {
       const key = JSON.stringify(project);
       if (sent.get(project.id) === key) return;
       setCloud({ ready: true, status: "saving", detail: "正在保存到云端" });
-      await call("syncProject", { project });
+      const result = await call<SyncResult>("syncProject", { project });
       sent.set(project.id, key);
       known.add(project.id);
+      if (!result.ok) {
+        // 云端有其他设备的新版本：云端版本替换当前工程，本机内容另存为副本，两份都保留。
+        const copy = conflictCopy(project);
+        applying = true;
+        const server = { ...result.serverProject, revisions: project.revisions };
+        useStudio.getState().setHydrated(useStudio.getState().projects.flatMap((p) => (p.id === project.id ? [server, copy] : [p])));
+        applying = false;
+        writeMark(project.id, { revision: result.serverRevision, key: contentKey(server) });
+        setCloud({ ready: true, status: "error", detail: `${result.message}：本机内容已另存为“${copy.name}”` });
+        void flush();
+        return;
+      }
+      const extras = project.protocolExtras ?? docToProject(projectToDoc(project)).protocolExtras;
+      if (extras && extras.revision !== result.revision) {
+        const updated = { ...project, protocolExtras: { ...extras, revision: result.revision } };
+        applying = true;
+        useStudio.getState().setHydrated(useStudio.getState().projects.map((p) => (p.id === project.id && contentKey(p) === contentKey(project) ? updated : p)));
+        applying = false;
+        sent.set(project.id, JSON.stringify(updated));
+        writeMark(project.id, { revision: result.revision, key: contentKey(updated) });
+      } else writeMark(project.id, { revision: result.revision, key: contentKey(project) });
       setCloud({ ready: true, status: "saved", detail: "已保存到云端" });
     }
 
@@ -100,6 +172,7 @@ export function CloudSync() {
             known.delete(id);
             sent.delete(id);
             await call("deleteProject", { id });
+            writeMark(id, null);
           }
         }
         for (const project of projects) await push(project);
@@ -119,8 +192,18 @@ export function CloudSync() {
         setPalette(profile.palette);
         applying = true;
         const map = new Map(remote.map((project) => [project.id, project]));
-        for (const project of useStudio.getState().projects) map.set(project.id, merge(project, map.get(project.id)));
-        const projects = [...map.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+        const marks = readMarks();
+        const extra: Project[] = [];
+        for (const project of useStudio.getState().projects) {
+          const [main, ...copies] = merge(project, map.get(project.id), marks[project.id]);
+          map.set(project.id, main);
+          extra.push(...copies);
+        }
+        for (const project of remote) {
+          const local = useStudio.getState().projects.find((p) => p.id === project.id);
+          if (!local || contentKey(local) === contentKey(project)) writeMark(project.id, { revision: revisionOf(project), key: contentKey(map.get(project.id) ?? project) });
+        }
+        const projects = [...map.values(), ...extra].sort((a, b) => b.updatedAt - a.updatedAt);
         useStudio.getState().setHydrated(projects);
         applying = false;
         if (stop) return;
@@ -130,11 +213,8 @@ export function CloudSync() {
           timer = window.setTimeout(() => void flush(), 700);
         });
         for (const project of projects) {
-          const key = JSON.stringify(project);
-          await call("syncProject", { project });
+          await push(useStudio.getState().projects.find((p) => p.id === project.id) ?? project);
           if (stop) return;
-          sent.set(project.id, key);
-          known.add(project.id);
         }
         setCloud({ ready: true, status: "saved", detail: "已保存到云端" });
       } catch (error) {
