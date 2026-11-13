@@ -178,13 +178,19 @@ async function ensureActor(sql: Sql, userId: string): Promise<Actor> {
     );
     created = inserted.length > 0;
   }
-  const promoted = await sql.query(
-    `insert into user_roles (user_id, role)
-     select $1, 'super_admin'
-     where not exists (select 1 from user_roles where role = 'super_admin')
-     returning user_id`,
-    [userId],
-  );
+  // 首个超级管理员：设置了 BOOTSTRAP_ADMIN_EMAIL 时只允许该邮箱获得，避免生产首次部署被抢注；
+  // 未设置时保持原行为（第一个账号成为超级管理员），方便本地试用。
+  const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const mayBootstrap = !bootstrapEmail || (user.email || "").toLowerCase() === bootstrapEmail;
+  const promoted = mayBootstrap
+    ? await sql.query(
+        `insert into user_roles (user_id, role)
+         select $1, 'super_admin'
+         where not exists (select 1 from user_roles where role = 'super_admin')
+         returning user_id`,
+        [userId],
+      )
+    : [];
   if (promoted.length) await audit(sql, userId, "bootstrap.super_admin", userId, null, { role: "super_admin" });
   if (created) {
     for (const kind of QUOTA_KINDS) {
