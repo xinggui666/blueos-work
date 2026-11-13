@@ -145,15 +145,22 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
+// 端口全部来自环境变量（策划案 15.3）：PORT（开发服务，默认 8080）、PREVIEW_PORT（vite preview，默认 8081）。
+// 生产独立部署用 NITRO_PRESET=node-server 构建，运行 `node .output/server/index.mjs`，监听 PORT / HOST。
+const envPort = (key: string, fallback: number) => {
+  const value = Number(process.env[key]);
+  return Number.isInteger(value) && value > 0 && value < 65536 ? value : fallback;
+};
+
 export default defineConfig(({ command, isPreview }) => ({
   server: {
-    host: "0.0.0.0",
-    port: 8080,
+    host: process.env.HOST || "0.0.0.0",
+    port: envPort("PORT", 8080),
     strictPort: true,
   },
   preview: {
-    host: "127.0.0.1",
-    port: 8081,
+    host: process.env.PREVIEW_HOST || "127.0.0.1",
+    port: envPort("PREVIEW_PORT", 8081),
     strictPort: true,
   },
   resolve: { tsconfigPaths: true },
@@ -170,7 +177,8 @@ export default defineConfig(({ command, isPreview }) => ({
     ...(command === "build" || isPreview
       ? [
           nitro({
-            preset: "vercel",
+            // 默认保持原来的 vercel 输出；Docker / 自有服务器用 NITRO_PRESET=node-server。
+            preset: process.env.NITRO_PRESET || "vercel",
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

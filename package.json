@@ -7,7 +7,7 @@
     "nf3": "0.3.17"
   },
   "scripts": {
-    "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
+    "dev": "node scripts/with-app-env.mjs vite dev",
     "build": "node scripts/with-app-env.mjs vite build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
     "build:dev": "node scripts/with-app-env.mjs vite build --mode development",
@@ -20,7 +20,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test:template": "node --test 'scripts/**/*.test.mjs'",
-    "test:api": "node scripts/api-smoke.mjs"
+    "test:api": "node scripts/api-smoke.mjs",
+    "build:server": "NITRO_PRESET=node-server node scripts/with-app-env.mjs vite build && npm run db:migrate",
+    "start": "node .output/server/index.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

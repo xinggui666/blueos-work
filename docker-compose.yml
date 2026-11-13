@@ -1,21 +1,31 @@
+# 单机部署示例。只有 web 对外（默认只绑定 127.0.0.1，由 Nginx 反代 HTTPS）；
+# Postgres 不映射端口，只在 compose 内网可达。
 services:
   web:
     build: .
     env_file: .env
+    environment:
+      PORT: ${PORT:-8080}
+      DATABASE_URL: postgres://${POSTGRES_USER:-blueos}:${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-blueos}
     ports:
-      - "${PORT:-8080}:8080"
+      - "${BIND_ADDR:-127.0.0.1}:${PUBLIC_PORT:-8080}:${PORT:-8080}"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
   db:
     image: postgres:16
     environment:
-      POSTGRES_USER: blueos
-      POSTGRES_PASSWORD: blueos
-      POSTGRES_DB: blueos
+      POSTGRES_USER: ${POSTGRES_USER:-blueos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-blueos}
     volumes:
       - blueos-db:/var/lib/postgresql/data
-  redis:
-    image: redis:7
-    # 当前业务不读取 Redis。这个服务只是预留，未接入前不要把它当成已经在用。
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+  # Redis 尚未接入业务（阶段 4 构建队列再启用），这里不启动，避免误以为已在使用。
 volumes:
   blueos-db:
