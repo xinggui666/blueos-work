@@ -20,6 +20,14 @@ export const BUILD_ACTIONS = ["requestBuild", "listBuilds", "getBuild", "cancelB
 export type BuildAction = (typeof BUILD_ACTIONS)[number];
 export const isBuildAction = (a: string): a is BuildAction => (BUILD_ACTIONS as readonly string[]).includes(a);
 
+export const QUOTA_STATE_LABEL: Record<string, string> = {
+  none: "未扣分",
+  reserved: "已预扣",
+  committed: "已确认扣分",
+  released: "预扣已退回",
+  waived: "管理员重试，不扣分",
+};
+
 export const BUILD_STATUS_LABEL: Record<string, string> = {
   queued: "待排队",
   waiting: "等待执行",
@@ -70,11 +78,12 @@ export function buildCard(row: Row) {
     createdAt: iso(row.created_at),
     startedAt: iso(row.started_at),
     finishedAt: iso(row.finished_at),
+    retryOf: row.retry_of ? String(row.retry_of) : null,
   };
 }
 
 const CARD_COLUMNS =
-  "id, project_id, revision, status, mode, package_name, version_name, version_code, generator, toolkit, quota_state, cancel_requested, error, artifact_name, artifact_sha256, artifact_bytes, source_sha256, created_at, started_at, finished_at";
+  "id, project_id, revision, status, mode, package_name, version_name, version_code, generator, toolkit, quota_state, cancel_requested, error, artifact_name, artifact_sha256, artifact_bytes, source_sha256, created_at, started_at, finished_at, retry_of";
 
 /** 执行中但 Worker 心跳超时的任务判失败并释放预扣（幂等：只有状态从 running 改掉的那次释放）。 */
 export async function sweepStale(sql: Sql) {
@@ -86,7 +95,7 @@ export async function sweepStale(sql: Sql) {
 }
 
 /** 把任务从 from 状态改成终态并释放预扣。返回是否由这次调用完成。 */
-async function finishWithRelease(taskId: string, from: string[], to: "failed" | "cancelled", message: string): Promise<boolean> {
+export async function finishWithRelease(taskId: string, from: string[], to: "failed" | "cancelled", message: string): Promise<boolean> {
   return withTransaction(async (tx) => {
     const rows = await tx.query<Row>(
       `update build_tasks set status = $2, error = $3, finished_at = now(),
@@ -231,4 +240,110 @@ async function requestBuild(sql: Sql, userId: string, body: Record<string, unkno
     );
     return { ...buildCard(rows[0]), reused: false, charged: false, reserved: true, message: status === "queued" ? "已预扣 1 个打包积分，前面还有任务，排队中" : "已预扣 1 个打包积分，等待构建" };
   });
+}
+
+// ───────────── 管理后台：构建管理（规格 17.7） ─────────────
+
+export const ADMIN_BUILD_ACTIONS = ["adminBuilds", "adminBuild", "adminCancelBuild", "adminRetryBuild", "adminDownloadBuild"] as const;
+export type AdminBuildAction = (typeof ADMIN_BUILD_ACTIONS)[number];
+export const isAdminBuildAction = (a: string): a is AdminBuildAction => (ADMIN_BUILD_ACTIONS as readonly string[]).includes(a);
+
+type AuditFn = (sql: Sql, action: string, target: string, before: unknown, after: unknown) => Promise<void>;
+
+export async function handleAdminBuildAction(sql: Sql, adminId: string, action: AdminBuildAction, body: Record<string, unknown>, audit: AuditFn) {
+  await sweepStale(sql);
+  if (action === "adminBuilds") {
+    const status = text(body.status, 20);
+    const userId = text(body.userId, 80);
+    const query = text(body.query, 80);
+    const rows = await sql.query<Row>(
+      `select ${CARD_COLUMNS.split(", ").map((c) => "t." + c).join(", ")}, t.user_id, u.email
+       from build_tasks t left join "user" u on u.id = t.user_id
+       where ($1 = '' or t.status = $1) and ($2 = '' or t.user_id = $2)
+         and ($3 = '' or t.id = $3 or t.project_id = $3 or t.package_name ilike '%' || $3 || '%' or u.email ilike '%' || $3 || '%')
+       order by t.created_at desc limit 80`,
+      [status, userId, query],
+    );
+    const counts = await sql.query<{ status: string; n: number }>("select status, count(*)::int as n from build_tasks group by status");
+    const workers = await sql.query<Row>("select id, host, toolkit, sandbox, signing, started_at, seen_at, seen_at > now() - ($1 || ' seconds')::interval as online from build_workers order by seen_at desc", [String(WORKER_ONLINE_SECONDS)]);
+    const reasons = await sql.query<{ reason: string; n: number }>(
+      `select left(error, 80) as reason, count(*)::int as n from build_tasks where status = 'failed' and error <> '' group by 1 order by 2 desc limit 8`,
+    );
+    return {
+      tasks: rows.map((r) => ({ ...buildCard(r), userId: String(r.user_id), email: String(r.email ?? ""), quotaLabel: QUOTA_STATE_LABEL[String(r.quota_state)] ?? String(r.quota_state) })),
+      counts: Object.fromEntries(counts.map((c) => [c.status, Number(c.n)])),
+      workers: workers.map((w) => ({
+        id: String(w.id),
+        host: String(w.host),
+        toolkit: String(w.toolkit),
+        sandbox: String(w.sandbox),
+        signing: Boolean(w.signing),
+        online: Boolean(w.online),
+        startedAt: iso(w.started_at),
+        seenAt: iso(w.seen_at),
+      })),
+      failureReasons: reasons.map((r) => ({ reason: String(r.reason), count: Number(r.n) })),
+    };
+  }
+  const taskId = text(body.id, 48);
+  const row = (await sql.query<Row>(`select ${CARD_COLUMNS}, user_id, log, verify, components, environment, runtime_sha256, worker_id, heartbeat_at, retried_by from build_tasks where id = $1`, [taskId]))[0];
+  if (!row) throw notFound("没有这个构建任务");
+  if (action === "adminBuild") {
+    const ledger = await sql.query<Row>("select phase, delta, note, created_at from quota_ledger where ref = $1 order by created_at", [taskId]);
+    const retries = await sql.query<Row>(`select ${CARD_COLUMNS} from build_tasks where retry_of = $1 order by created_at desc`, [taskId]);
+    return {
+      ...buildCard(row),
+      userId: String(row.user_id),
+      quotaLabel: QUOTA_STATE_LABEL[String(row.quota_state)] ?? String(row.quota_state),
+      log: String(row.log ?? ""),
+      verify: row.verify ?? null,
+      components: row.components ?? [],
+      environment: row.environment ?? {},
+      runtimeSha256: String(row.runtime_sha256 ?? ""),
+      workerId: row.worker_id ? String(row.worker_id) : null,
+      retriedBy: row.retried_by ? String(row.retried_by) : null,
+      ledger: ledger.map((l) => ({ phase: String(l.phase), delta: Number(l.delta), note: String(l.note), createdAt: iso(l.created_at) })),
+      retries: retries.map(buildCard),
+    };
+  }
+  if (action === "adminDownloadBuild") {
+    const art = (await sql.query<Row>("select status, artifact, artifact_name, artifact_sha256 from build_tasks where id = $1", [taskId]))[0];
+    const data = bytesOf(art?.artifact);
+    if (art?.status !== "succeeded" || !data) throw new ApiError(409, "只有构建成功的任务有产物");
+    await audit(sql, "build.download", taskId, null, { sha256: art.artifact_sha256 });
+    return { fileName: String(art.artifact_name), sha256: String(art.artifact_sha256), rpkBase64: Buffer.from(data).toString("base64") };
+  }
+  if (action === "adminCancelBuild") {
+    if (await finishWithRelease(taskId, ["queued", "waiting"], "cancelled", "管理员取消")) {
+      await audit(sql, "build.cancel", taskId, { status: row.status }, { status: "cancelled" });
+      return { id: taskId, status: "cancelled" };
+    }
+    const flagged = await sql.query("update build_tasks set cancel_requested = true where id = $1 and status = 'running' returning id", [taskId]);
+    if (flagged.length) {
+      await audit(sql, "build.cancel", taskId, { status: "running" }, { cancelRequested: true });
+      return { id: taskId, status: "running", cancelRequested: true };
+    }
+    throw new ApiError(409, `任务已经${BUILD_STATUS_LABEL[String(row.status)] ?? "结束"}，不能取消`);
+  }
+  // adminRetryBuild：只重试失败或取消的任务。新任务用同一份源工程，积分状态 waived，
+  // 不预扣、不扣分；原任务的预扣早已退回，所以用户整体不会被重复扣分。
+  if (!["failed", "cancelled"].includes(String(row.status))) throw new ApiError(409, "只有失败或已取消的任务可以重试");
+  const full = (await sql.query<Row>("select source_zip from build_tasks where id = $1", [taskId]))[0];
+  if (!bytesOf(full?.source_zip)) throw new ApiError(409, "原任务没有源工程，不能重试");
+  const newTask = newId();
+  try {
+    const rows = await sql.query<Row>(
+      `insert into build_tasks (id, user_id, project_id, revision, content_sha256, status, mode, package_name, version_name, version_code, routes,
+         generator, runtime_sha256, components, source_sha256, source_zip, quota_state, priority, toolkit, retry_of, retried_by)
+       select $2, user_id, project_id, revision, content_sha256, 'waiting', mode, package_name, version_name, version_code, routes,
+         generator, runtime_sha256, components, source_sha256, source_zip, 'waived', priority, toolkit, id, $3
+       from build_tasks where id = $1 returning ${CARD_COLUMNS}`,
+      [taskId, newTask, adminId],
+    );
+    await audit(sql, "build.retry", taskId, { status: row.status }, { retry: newTask, quotaState: "waived" });
+    return { ...buildCard(rows[0]), message: "已重新排队，管理员重试不扣用户积分" };
+  } catch (error) {
+    if (String((error as { code?: string }).code) === "23505" || /build_tasks_retry_active_idx/.test(String(error))) throw new ApiError(409, "这个任务已经有进行中的重试");
+    throw error;
+  }
 }

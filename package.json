@@ -30,7 +30,9 @@
     "gen:watch-runtime": "node scripts/gen-watch-runtime.mjs",
     "worker:build": "node worker/build-worker.mjs",
     "e2e:build": "node scripts/e2e/build-rpk.mjs",
-    "e2e:build-web": "node scripts/e2e/web-build.mjs"
+    "e2e:build-web": "node scripts/e2e/web-build.mjs",
+    "e2e:admin": "node scripts/e2e/admin-api.mjs",
+    "e2e:admin-web": "node scripts/e2e/web-admin.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

@@ -2,7 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { getSql, withTransaction, type Sql } from "@/lib/db";
 import { ApiError, forbidden, notFound } from "./errors";
 import { commitQuota, ensureQuota, grantQuota, reserve } from "./quota.server";
-import { handleBuildAction, isBuildAction } from "./builds.server";
+import { handleAdminBuildAction, handleBuildAction, isAdminBuildAction, isBuildAction } from "./builds.server";
+import { handleAdminExtra, isAdminExtraAction } from "./admin.server";
+import { inRollout } from "./admin-rules";
 import { checkForSave, editorProjectFrom, editorToDoc, listRevisions, loadOwnedDoc, saveDoc, type SaveResult } from "./projects.server";
 import { inspectBproj, packBproj } from "@/lib/protocol/bproj";
 import { migrateToCurrent } from "@/lib/protocol/migrate";
@@ -19,6 +21,7 @@ import {
   accessReason,
   allows,
   isStaff,
+  MAINTENANCE_READ_ACTIONS,
   normalizeCode,
   roleChangeError,
   submissionIssues,
@@ -201,8 +204,8 @@ async function quotaView(sql: Sql, userId: string) {
 }
 
 async function componentRows(sql: Sql): Promise<AccessRow[]> {
-  const rows = await sql.query<{ slug: string; access: string; status: string; name: string }>(
-    "select slug, access, status, name from components",
+  const rows = await sql.query<{ slug: string; access: string; status: string; name: string; category: string }>(
+    "select slug, access, status, name, category from components",
   );
   return rows;
 }
@@ -216,12 +219,20 @@ async function grantSet(sql: Sql, userId: string): Promise<Set<string>> {
   return new Set(rows.map((row) => row.slug));
 }
 
+/** 会员快照里的组件分类限制；没有限制返回 null。 */
+function memberCategories(snapshot: unknown): string[] | null {
+  const value = (asJson(snapshot) as { categories?: unknown } | null)?.categories;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const list = value.split(/[,，\s]+/).map((x) => x.trim()).filter(Boolean);
+  return list.length ? list : null;
+}
+
 async function paletteFor(sql: Sql, userId: string, roles: string[]) {
   const [rows, member, grants] = await Promise.all([componentRows(sql), activeMembership(sql, userId), grantSet(sql, userId)]);
   const staff = allows(roles, "components.write");
   const palette: Record<string, string> = {};
   for (const row of rows) {
-    palette[row.slug] = accessReason(row, { member: Boolean(member), granted: grants.has(row.slug), staff }) ?? "";
+    palette[row.slug] = accessReason(row, { member: Boolean(member), granted: grants.has(row.slug), staff, memberCategories: memberCategories(member?.snapshot) }) ?? "";
   }
   return palette;
 }
@@ -562,6 +573,8 @@ async function giveMembership(sql: Sql, userId: string, plan: Row, source: strin
     projectLimit: Number(plan.project_limit ?? 20),
     monthlyBuild: Number(plan.monthly_build ?? 0),
     bonusBuild: Number(plan.bonus_build ?? 0),
+    // 套餐的组件权限：会员可用的组件分类（空 = 全部会员组件）。快照保存，改套餐不影响已开通的会员。
+    categories: String(plan.categories ?? ""),
   };
   await sql.query(
     "insert into memberships (id, user_id, plan_id, snapshot, starts_at, ends_at, source) values ($1,$2,$3,$4::jsonb,$5,$6,$7)",
@@ -594,9 +607,11 @@ async function me(sql: Sql, actor: Actor) {
   const membership = await activeMembership(sql, actor.userId);
   const quota = await quotaView(sql, actor.userId);
   const palette = await paletteFor(sql, actor.userId, actor.roles);
-  const announcements = await sql.query<{ id: string; title: string; body: string }>(
-    "select id, title, body from announcements where active = true order by created_at desc limit 5",
-  );
+  const flags = await configMap(sql);
+  const announcements =
+    flags.announcements_enabled === "false"
+      ? []
+      : await sql.query<{ id: string; title: string; body: string }>("select id, title, body from announcements where active = true order by created_at desc limit 5");
   const plans = await sql.query<Row>("select * from plans where active = true order by price_cents");
   return {
     userId: actor.userId,
@@ -613,10 +628,10 @@ async function me(sql: Sql, actor: Actor) {
     palette,
     announcements,
     plans: plans.map(planCard),
-    flags: await configMap(sql),
+    flags,
     clients: CLIENTS,
     release: await (async () => {
-      const row = await latestRelease(sql);
+      const row = await latestRelease(sql, "stable", actor.userId);
       return row ? releaseCard(row) : null;
     })(),
   };
@@ -635,16 +650,25 @@ function releaseCard(row: Row) {
     sha256: String(row.sha256 ?? ""),
     sizeBytes: Number(row.size_bytes ?? 0),
     active: Boolean(row.active),
+    rolloutPercent: Number(row.rollout_percent ?? 100),
+    publishedAt: iso(row.published_at),
+    // 没有真实安装包（https 地址 + SHA-256）时明确不可下载。
+    downloadable: Boolean(row.apk_url) && /^[a-f0-9]{64}$/.test(String(row.sha256 ?? "")),
   };
 }
 
-async function latestRelease(sql: Sql, channel = "stable") {
-  return one<Row>(
-    sql,
-    "select * from app_releases where active = true and channel = $1 order by version_code desc limit 1",
+/**
+ * 当前可推送的版本：已启用、发布时间已到（未设置视为立即），并且命中灰度。
+ * 灰度按 用户/设备标识 + 版本 id 的哈希分桶（0–99），同一用户结果稳定；没有标识时只推 100% 的版本。
+ */
+async function latestRelease(sql: Sql, channel = "stable", subject = "") {
+  const rows = await sql.query<Row>(
+    "select * from app_releases where active = true and channel = $1 and (published_at is null or published_at <= now()) order by version_code desc limit 20",
     [channel],
   );
+  return rows.find((row) => inRollout(String(row.id), Number(row.rollout_percent ?? 100), subject)) ?? null;
 }
+
 
 function planCard(plan: Row) {
   return {
@@ -734,6 +758,19 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   if (!action.startsWith("admin") && !isSharedAction(action)) throw new Error("这个接口没有对客户端开放");
 
+  // 维护模式（17.9）：普通用户只能读，不能写；管理员不受限制，方便处理问题。
+  // 已生成的 RPK 和离线客户端不依赖这个开关，远程配置不可用也不影响它们。
+  if (!isStaff(actor.roles) && !(MAINTENANCE_READ_ACTIONS as readonly string[]).includes(action)) {
+    const flags = await configMap(sql);
+    if (flags.maintenance_mode === "true") throw new ApiError(503, "系统维护中，暂时只能查看，不能修改。已下载的 RPK 和本地工程不受影响。");
+  }
+
+  if (isAdminBuildAction(action)) {
+    requirePerm(actor, action === "adminBuilds" || action === "adminBuild" ? "jobs.read" : "builds.manage");
+    return handleAdminBuildAction(sql, userId, action, body, (tx, act, target, before, after) => audit(tx, userId, act, target, before, after));
+  }
+  if (isAdminExtraAction(action)) return handleAdminExtra(sql, { userId, roles: actor.roles }, action, body, await configMap(sql));
+
   if (action === "me") {
     await touchDevice(sql, userId, client);
     return { ...(await me(sql, actor)), client };
@@ -780,7 +817,10 @@ export async function dispatch(userId: string, action: string, payload: unknown,
 
   if (action === "generate") return runGeneration(sql, userId, body.dsl);
 
-  if (action === "exportBundle") return exportBundle(sql, actor, body);
+  if (action === "exportBundle") {
+    if ((await configMap(sql)).export_enabled === "false") throw new ApiError(403, "工程下载已在后台关闭。编辑和保存不受影响。");
+    return exportBundle(sql, actor, body);
+  }
 
   if (action === "listJobs") {
     const rows = await sql.query<Row>(
@@ -835,7 +875,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   if (action === "releaseCheck") {
     const versionCode = Math.max(0, Math.floor(Number(body.versionCode ?? 0)));
     const channel = body.channel === "beta" ? "beta" : "stable";
-    const release = await latestRelease(sql, channel);
+    const release = await latestRelease(sql, channel, userId);
     const flags = await configMap(sql);
     if (!release) return { update: false, force: false, release: null, flags };
     const latest = Number(release.version_code);
@@ -872,6 +912,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   }
 
   if (action === "redeem") {
+    if ((await configMap(sql)).keys_open === "false") throw new ApiError(403, "卡密兑换已在后台关闭");
     const code = normalizeCode(text(body.code, 40));
     if (!/^BH-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code)) throw new Error("卡密格式不对");
     const hash = createHash("sha256").update(code).digest("hex");
@@ -981,28 +1022,6 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     return { id: submissionId, status: auto ? "approved" : "pending", issues: [] };
   }
 
-  if (action === "adminOverview") {
-    if (!isStaff(actor.roles)) throw forbidden();
-    const [users, members, components, pending, jobs, failed] = await Promise.all([
-      one<{ count: number }>(sql, 'select count(*)::int as count from "user"'),
-      one<{ count: number }>(sql, "select count(distinct user_id)::int as count from memberships where ends_at > now()"),
-      one<{ count: number }>(sql, "select count(*)::int as count from components where status = 'published'"),
-      one<{ count: number }>(sql, "select count(*)::int as count from submissions where status = 'pending'"),
-      one<{ count: number }>(sql, "select count(*)::int as count from jobs where kind = 'generation' and status = 'succeeded'"),
-      one<{ count: number }>(sql, "select count(*)::int as count from jobs where status = 'failed'"),
-    ]);
-    return {
-      users: users?.count ?? 0,
-      members: members?.count ?? 0,
-      components: components?.count ?? 0,
-      pending: pending?.count ?? 0,
-      generated: jobs?.count ?? 0,
-      failed: failed?.count ?? 0,
-      flags: await configMap(sql),
-      note: "构建成功数为 0 是预期结果：官方编译器未验证，unavailable 不会被算作成功。",
-    };
-  }
-
   if (action === "adminUsers") {
     requirePerm(actor, "users.read");
     const query = text(body.query, 80);
@@ -1029,24 +1048,6 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       });
     }
     return list;
-  }
-
-  if (action === "adminUser") {
-    requirePerm(actor, "users.read");
-    const target = text(body.userId, 80);
-    const quota = await quotaView(sql, target);
-    const membership = await activeMembership(sql, target);
-    const projects = await one<{ count: number }>(sql, "select count(*)::int as count from projects where user_id = $1", [target]);
-    const jobs = await sql.query<Row>(
-      "select id, kind, status, message, created_at from jobs where user_id = $1 order by created_at desc limit 8",
-      [target],
-    );
-    return {
-      quota,
-      membership: membership ? { endsAt: iso(membership.ends_at), snapshot: asJson(membership.snapshot) } : null,
-      projects: projects?.count ?? 0,
-      jobs: jobs.map((row) => ({ id: String(row.id), kind: String(row.kind), status: String(row.status), message: String(row.message), createdAt: iso(row.created_at) })),
-    };
   }
 
   if (action === "adminSetStatus") {
@@ -1309,24 +1310,6 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     return { batchId, codes };
   }
 
-  if (action === "adminKeys") {
-    requirePerm(actor, "keys.write");
-    const rows = await sql.query<Row>(
-      `select k.id, k.hint, k.type, k.status, k.expires_at, k.used_at, b.title
-       from license_keys k join license_batches b on b.id = k.batch_id
-       order by k.used_at desc nulls last, k.id desc limit 60`,
-    );
-    return rows.map((row) => ({
-      id: String(row.id),
-      hint: String(row.hint),
-      type: String(row.type),
-      status: String(row.status),
-      title: String(row.title),
-      expiresAt: iso(row.expires_at),
-      usedAt: iso(row.used_at),
-    }));
-  }
-
   if (action === "adminSetKey") {
     requirePerm(actor, "keys.write");
     const keyId = text(body.id, 48);
@@ -1496,9 +1479,14 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const sha = text(release.sha256, 64).toLowerCase();
     if (sha && !/^[a-f0-9]{64}$/.test(sha)) throw new Error("SHA-256 需要 64 位十六进制");
     if (apkUrl && !/^https:\/\//.test(apkUrl)) throw new Error("安装包地址只接受 https");
+    const rollout = Math.min(100, Math.max(0, Math.floor(Number(release.rolloutPercent ?? 100))));
+    const publishedRaw = text(release.publishedAt, 40);
+    const publishedAt = publishedRaw ? new Date(publishedRaw) : null;
+    if (publishedAt && Number.isNaN(publishedAt.getTime())) throw new Error("发布时间格式不对");
+    if (apkUrl && !sha) throw new Error("填写安装包地址时必须同时填写 SHA-256");
     await sql.query(
-      `insert into app_releases (id, channel, version_name, version_code, min_version_code, force_update, notes, apk_url, sha256, size_bytes, active)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      `insert into app_releases (id, channel, version_name, version_code, min_version_code, force_update, notes, apk_url, sha256, size_bytes, active, rollout_percent, published_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        on conflict (id) do update set
          channel = excluded.channel,
          version_name = excluded.version_name,
@@ -1509,7 +1497,9 @@ export async function dispatch(userId: string, action: string, payload: unknown,
          apk_url = excluded.apk_url,
          sha256 = excluded.sha256,
          size_bytes = excluded.size_bytes,
-         active = excluded.active`,
+         active = excluded.active,
+         rollout_percent = excluded.rollout_percent,
+         published_at = excluded.published_at`,
       [
         releaseId,
         channel,
@@ -1522,9 +1512,11 @@ export async function dispatch(userId: string, action: string, payload: unknown,
         sha,
         Math.max(0, Math.floor(Number(release.sizeBytes ?? 0))),
         release.active !== false,
+        rollout,
+        publishedAt ? publishedAt.toISOString() : null,
       ],
     );
-    await audit(sql, userId, "release.save", releaseId, null, { versionName, versionCode, channel });
+    await audit(sql, userId, "release.save", releaseId, null, { versionName, versionCode, channel, rollout, publishedAt });
     return { ok: true, id: releaseId };
   }
 

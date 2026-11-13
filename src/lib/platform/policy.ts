@@ -9,6 +9,30 @@ export const CONFIG_KEYS = [
   "generation_enabled",
   "build_enabled",
   "membership_open",
+  "keys_open",
+  "export_enabled",
+  "announcements_enabled",
+  "maintenance_mode",
+] as const;
+
+/** 维护模式下普通用户仍可用的只读接口（管理员不受维护模式限制）。 */
+export const MAINTENANCE_READ_ACTIONS = [
+  "me",
+  "listProjects",
+  "getProjectDoc",
+  "listRevisions",
+  "validateProject",
+  "previewImport",
+  "listJobs",
+  "downloadJob",
+  "listBuilds",
+  "getBuild",
+  "downloadBuild",
+  "market",
+  "listOrders",
+  "mySubmissions",
+  "ledger",
+  "releaseCheck",
 ] as const;
 
 export const STARTER_QUOTA = { generation: 0, build: 0, export: 0 } as const;
@@ -46,6 +70,7 @@ const PERMS: Record<string, RoleName[]> = {
   "keys.write": ["operator", "admin", "super_admin"],
   "orders.confirm": ["operator", "admin", "super_admin"],
   "jobs.read": ["operator", "admin", "super_admin"],
+  "builds.manage": ["operator", "admin", "super_admin"],
   "config.write": ["admin", "super_admin"],
   "audit.read": ["admin", "super_admin"],
   "announce.write": ["operator", "admin", "super_admin"],
@@ -90,18 +115,24 @@ export type AccessRow = {
   access: string;
   status: string;
   name: string;
+  category?: string;
 };
 
 export function accessReason(
   row: AccessRow | undefined,
-  ctx: { member: boolean; granted: boolean; staff: boolean },
+  ctx: { member: boolean; granted: boolean; staff: boolean; memberCategories?: string[] | null },
 ): string | null {
   if (!row) return "这个组件不在目录里";
   if (row.status !== "published") return `${row.name}已下架`;
   if (row.access === "disabled") return `${row.name}已停止分发`;
   if (row.access === "public_free") return null;
   if (row.access === "internal") return ctx.staff ? null : `${row.name}仅内部使用`;
-  if (row.access === "membership") return ctx.member ? null : `${row.name}需要有效会员`;
+  if (row.access === "membership") {
+    if (!ctx.member) return `${row.name}需要有效会员`;
+    // 套餐限定了组件分类时，只有这些分类的会员组件可用（管理员授权的组件不受影响）。
+    if (ctx.memberCategories?.length && !ctx.granted && !ctx.memberCategories.includes(row.category ?? "")) return `${row.name}不在当前套餐的组件范围内`;
+    return null;
+  }
   if (row.access === "license_key" || row.access === "specific_user") {
     return ctx.granted ? null : `${row.name}需要组件授权`;
   }

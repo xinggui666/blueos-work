@@ -179,13 +179,18 @@ async function finishRelease(taskId, from, to, error, extra = {}) {
 async function finishSuccess(task, rpk, name, verify, log) {
   try {
     return await tx(async (c) => {
+      // 锁住任务行读积分状态：reserved 要确认扣分；waived（管理员重试）不扣分。
+      const cur = await c.query("select quota_state from build_tasks where id = $1 and status = 'running' and worker_id = $2 and cancel_requested = false for update", [task.id, WORKER_ID]);
+      const was = cur.rows[0]?.quota_state;
+      if (was !== "reserved" && was !== "waived") return false;
       const r = await c.query(
-        `update build_tasks set status = 'succeeded', quota_state = 'committed', artifact = $3, artifact_name = $4, artifact_sha256 = $5, artifact_bytes = $6,
+        `update build_tasks set status = 'succeeded', quota_state = $9, artifact = $3, artifact_name = $4, artifact_sha256 = $5, artifact_bytes = $6,
            verify = $7, log = $8, error = '', finished_at = now()
-         where id = $1 and status = 'running' and worker_id = $2 and quota_state = 'reserved' and cancel_requested = false returning user_id`,
-        [task.id, WORKER_ID, rpk, name, verify.sha256, rpk.length, JSON.stringify(verify), log],
+         where id = $1 and status = 'running' and worker_id = $2 returning user_id`,
+        [task.id, WORKER_ID, rpk, name, verify.sha256, rpk.length, JSON.stringify(verify), log, was === "reserved" ? "committed" : "waived"],
       );
       if (!r.rows.length) return false;
+      if (was === "waived") return true;
       const u = await c.query(
         "update quota_accounts set balance = balance - 1, reserved = reserved - 1 where user_id = $1 and kind = 'build' and reserved >= 1 and balance >= 1 returning balance",
         [task.user_id],
