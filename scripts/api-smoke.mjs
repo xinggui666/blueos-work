@@ -128,9 +128,13 @@ await step("免费用户最多 3 个工程", async () => {
   assert.match(r.json.error, /最多保存 3 个工程/);
 });
 
-await step("0 积分不能下载 .bproj、不能申请 RPK", async () => {
+await step("0 积分不能下载 .bproj；构建未开放时 RPK 申请记为不可用且不扣分", async () => {
   assert.equal((await call(user, "exportBundle", { projectId: pid(1) })).status, 400);
-  assert.equal((await call(user, "requestBuild", { projectId: pid(1) })).status, 400);
+  // 构建开关默认关闭：记录一条“不可用”任务，不预扣、不报成功（积分不足的 400 在 build-rpk e2e 里覆盖）。
+  const r = await call(user, "requestBuild", { projectId: pid(1) });
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  assert.equal(r.json.status, "unavailable");
+  assert.equal(r.json.charged, false);
 });
 
 let code = "";

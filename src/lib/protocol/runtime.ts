@@ -17,14 +17,13 @@ import {
   type Expr,
   type Value,
 } from "./expr.ts";
-import {
-  PROTOCOL_LIMITS,
-  VISIBLE_PROP,
-  type ActionNode,
-  type EventDoc,
-  type FunctionDoc,
-  type ProjectDoc,
-  type Trigger,
+import { PROTOCOL_LIMITS, VISIBLE_PROP } from "./limits.ts";
+import type {
+  ActionNode,
+  EventDoc,
+  FunctionDoc,
+  ProjectDoc,
+  Trigger,
 } from "./schema.ts";
 
 export const RUNTIME_LIMITS = { stepsPerDispatch: 2000, chainDepth: 4, traceSize: 300 };
@@ -71,12 +70,37 @@ export class Runtime {
   private parsed = new Map<string, Expr>();
   private pageOf = new Map<string, string>();
 
-  constructor(doc: ProjectDoc, opts: { now?: () => number } = {}) {
+  private onVarChange?: (variableId: string, value: Value) => void;
+
+  /**
+   * opts.initialVars：按变量 ID 覆盖初始值（手表端从本地存储恢复的持久化变量），会按变量类型转换。
+   * opts.onVarChange：变量值变化后回调（手表端用来写回本地存储）。
+   */
+  constructor(
+    doc: ProjectDoc,
+    opts: {
+      now?: () => number;
+      initialVars?: Record<string, Value>;
+      onVarChange?: (variableId: string, value: Value) => void;
+    } = {},
+  ) {
     this.doc = doc;
     this.clock = opts.now ?? (() => Date.now());
+    this.onVarChange = opts.onVarChange;
     for (const p of doc.pages) for (const c of p.components) this.pageOf.set(c.id, p.id);
     const vars: Record<string, Value> = {};
-    for (const v of doc.variables) vars[v.id] = v.default as Value;
+    for (const v of doc.variables) {
+      const saved = opts.initialVars?.[v.id];
+      let value = v.default as Value;
+      if (saved !== undefined) {
+        try {
+          value = coerce(saved, v.type);
+        } catch {
+          value = v.default as Value;
+        }
+      }
+      vars[v.id] = value;
+    }
     const props: Record<string, Record<string, Value>> = {};
     for (const p of doc.pages)
       for (const c of p.components) props[c.id] = { ...c.props, [VISIBLE_PROP]: !c.hidden };
@@ -129,6 +153,31 @@ export class Runtime {
     this.dispatch({ kind: "page", pageId: this.state.pageId, event: "hide" });
     this.state.stack.push(this.state.pageId);
     this.enterPage(pageId);
+  }
+
+  /**
+   * 页面被系统返回手势等外部方式关闭后，把运行时同步回 pageId（与 back 动作语义相同）。
+   * 目标不在页面栈里时直接进入该页面。
+   */
+  externalBack(pageId: string) {
+    if (pageId === this.state.pageId) return;
+    this.steps = 0;
+    while (this.state.pageId !== pageId) {
+      const leaving = this.state.pageId;
+      this.dispatch({ kind: "page", pageId: leaving, event: "hide" });
+      this.dispatch({ kind: "page", pageId: leaving, event: "exit" });
+      this.state.loaded = this.state.loaded.filter((id) => id !== leaving);
+      const prev = this.state.stack.pop();
+      if (prev === undefined) {
+        this.enterPage(pageId);
+        return;
+      }
+      if (prev === pageId) {
+        this.enterPage(prev);
+        return;
+      }
+      this.state.pageId = prev;
+    }
   }
 
   /** 调试器：手动触发某个事件（忽略触发器条件，但仍检查启用状态和条件表达式）。 */
@@ -256,7 +305,7 @@ export class Runtime {
     this.state.lastFired[ev.id] = now;
     const frame: Frame = { locals: value === undefined ? {} : { _value: value } };
     try {
-      if (ev.condition && !truthy(this.eval(ev.condition, frame))) {
+      if (ev.condition && !truthy(this.evaluate(ev.condition, frame))) {
         this.log("event", ev.id, `${ev.name ?? ev.id}：条件不满足，跳过`);
         return;
       }
@@ -300,7 +349,7 @@ export class Runtime {
     };
   }
 
-  private eval(src: string, frame: Frame, pageId = this.state.pageId): Value {
+  private evaluate(src: string, frame: Frame, pageId = this.state.pageId): Value {
     return evalExpr(this.expr(src), {
       get: this.scopeLookup(frame, pageId),
       now: () => this.clock(),
@@ -334,6 +383,13 @@ export class Runtime {
     this.state.vars[id] = next;
     this.log("var", id, `${v.key} = ${toText(next)}`);
     if (JSON.stringify(prev) === JSON.stringify(next)) return;
+    if (this.onVarChange) {
+      try {
+        this.onVarChange(id, next);
+      } catch (error) {
+        this.log("warn", id, `保存变量失败：${(error as Error).message}`);
+      }
+    }
     if (this.chain >= RUNTIME_LIMITS.chainDepth) {
       this.log(
         "warn",
@@ -352,9 +408,9 @@ export class Runtime {
         if (t.event === "change") fire = true;
         else if (t.event === "equals")
           fire =
-            JSON.stringify(this.eval(t.value ?? "null", frame)) === JSON.stringify(next) ||
-            toText(this.eval(t.value ?? "null", frame)) === toText(next);
-        else if (t.event === "condition") fire = truthy(this.eval(t.value ?? "false", frame));
+            JSON.stringify(this.evaluate(t.value ?? "null", frame)) === JSON.stringify(next) ||
+            toText(this.evaluate(t.value ?? "null", frame)) === toText(next);
+        else if (t.event === "condition") fire = truthy(this.evaluate(t.value ?? "false", frame));
         else if (t.event === "enterRange" || t.event === "leaveRange") {
           const inside = (x: Value) =>
             typeof x === "number" && x >= (t.min ?? -Infinity) && x <= (t.max ?? Infinity);
@@ -404,10 +460,10 @@ export class Runtime {
         return;
       }
       case "toast":
-        this.state.toast = toText(this.eval(a.text, frame));
+        this.state.toast = toText(this.evaluate(a.text, frame));
         return;
       case "log":
-        this.log("action", a.id, `日志：${toText(this.eval(a.text, frame))}`);
+        this.log("action", a.id, `日志：${toText(this.evaluate(a.text, frame))}`);
         return;
       case "show":
       case "hide":
@@ -421,14 +477,14 @@ export class Runtime {
       case "setProp": {
         const props = this.state.props[a.componentId];
         if (!props) throw new Error("组件不存在");
-        props[a.prop] = this.eval(a.value, frame);
+        props[a.prop] = this.evaluate(a.value, frame);
         return;
       }
       case "setVar":
-        this.setVar(a.variableId, this.eval(a.value, frame));
+        this.setVar(a.variableId, this.evaluate(a.value, frame));
         return;
       case "setLocal":
-        frame.locals[a.name] = this.eval(a.value, frame);
+        frame.locals[a.name] = this.evaluate(a.value, frame);
         return;
       case "call": {
         const result = this.call(a.functionId, a.args, frame);
@@ -437,10 +493,10 @@ export class Runtime {
         return;
       }
       case "if":
-        this.runList(truthy(this.eval(a.condition, frame)) ? a.then : a.else, frame);
+        this.runList(truthy(this.evaluate(a.condition, frame)) ? a.then : a.else, frame);
         return;
       case "repeat": {
-        const times = Math.trunc(Number(this.eval(a.times, frame)));
+        const times = Math.trunc(Number(this.evaluate(a.times, frame)));
         if (!Number.isFinite(times) || times < 0) throw new Error("循环次数无效");
         if (times > PROTOCOL_LIMITS.repeatMax)
           throw new Error(`循环次数不能超过 ${PROTOCOL_LIMITS.repeatMax}`);
@@ -448,7 +504,7 @@ export class Runtime {
         return;
       }
       case "forEach": {
-        const list = this.eval(a.list, frame);
+        const list = this.evaluate(a.list, frame);
         if (!Array.isArray(list)) throw new Error("遍历的不是列表");
         for (const item of list.slice(0, PROTOCOL_LIMITS.repeatMax)) {
           if (frame.returned) break;
@@ -458,7 +514,7 @@ export class Runtime {
         return;
       }
       case "return":
-        frame.returned = { value: a.value ? this.eval(a.value, frame) : null };
+        frame.returned = { value: a.value ? this.evaluate(a.value, frame) : null };
         return;
       case "startTimer": {
         const st = this.state.timers[a.timerId];
@@ -497,7 +553,7 @@ export class Runtime {
       const src = args[p.name] ?? p.default;
       if (src === undefined) throw new Error(`缺少参数 ${p.name}`);
       locals[p.name] = coerce(
-        this.eval(src, args[p.name] !== undefined ? caller : { locals: {} }),
+        this.evaluate(src, args[p.name] !== undefined ? caller : { locals: {} }),
         p.type,
       );
     }
@@ -534,7 +590,7 @@ export class Runtime {
     const pageId = this.pageOf.get(b.componentId) ?? this.state.pageId;
     const now = this.clock();
     if (b.source.kind === "variable") return this.state.vars[b.source.variableId] ?? null;
-    if (b.source.kind === "expr") return this.eval(b.source.expr, { locals: {} }, pageId);
+    if (b.source.kind === "expr") return this.evaluate(b.source.expr, { locals: {} }, pageId);
     const f = b.source.field;
     if (f.startsWith("timer")) {
       const timer = this.doc.timers.find(

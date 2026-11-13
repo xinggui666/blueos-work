@@ -6,7 +6,7 @@
  *   以协议 v2 原样保存在 protocolExtras 里，由逻辑编辑器直接编辑，ID 稳定、往返无损。
  * 旧模式（v1 编辑器数据）：逻辑在 node.actions / variables / functions / timeBindings 里，
  *   打开时用 toNative() 一次性转换成原生模式。
- * docToLegacyProject() 把协议降级成 v1 结构，只给旧生成器（emit.server.ts）使用。
+ * docToLegacyProject() 把协议降级成 v1 结构（兼容旧客户端读取，生成器不再使用）。
  */
 import type {
   AppAction,
@@ -550,9 +550,4 @@ export function logicOf(project: EditorProject): LogicDoc {
     timers: doc.timers,
     bindings: doc.bindings,
   };
-}
-
-/** 给旧生成器用：协议 → v1 Project。 */
-export function legacyForGenerator(project: EditorProject): EditorProject {
-  return docToLegacyProject(projectToDoc(project), project.revisions, true);
 }

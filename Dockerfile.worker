@@ -1,0 +1,17 @@
+# RPK 构建 Worker 镜像（阶段 4）。
+# 注意：本仓库所在的开发机没有 Docker，这个镜像文件尚未实际构建验证；Worker 本身已在宿主机上用 bwrap 实测过。
+# 蓝河官方工具链不随仓库分发：先在宿主机执行
+#   sh worker/install-toolkit.sh /path/blueos-toolkit-1.9.45-beta.44.tgz ./deploy/toolkit
+# 再由 docker-compose 以只读卷挂到 /opt/blueos-toolkit。
+FROM node:24-bookworm-slim
+WORKDIR /worker
+# bubblewrap：隔离编译进程（无网络、系统目录只读）；util-linux 提供 prlimit。
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bubblewrap util-linux ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY worker ./worker
+ENV BLUEOS_TOOLKIT_DIR=/opt/blueos-toolkit BUILD_WORK_DIR=/tmp/bw-build BUILD_SANDBOX=auto
+USER node
+CMD ["node", "worker/build-worker.mjs"]

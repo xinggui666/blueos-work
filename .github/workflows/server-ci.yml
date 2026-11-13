@@ -41,6 +41,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run protocol:check
+      - name: Watch runtime bundle is up to date
+        run: node scripts/gen-watch-runtime.mjs --check
       - name: Build node-server and migrate
         run: npm run build:server
       - name: API smoke test against PostgreSQL

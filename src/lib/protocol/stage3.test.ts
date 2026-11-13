@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { makeSample, projectToDsl, validateDsl } from "../blueos/model.ts";
-import { docToProject, isNative, legacyForGenerator, logicOf, projectToDoc, toNative } from "./editor.ts";
+import { makeSample } from "../blueos/model.ts";
+import { docToProject, isNative, logicOf, projectToDoc, toNative } from "./editor.ts";
 import { identifiersOf, renameIdentifier } from "./expr.ts";
 import { counterDoc } from "./fixtures.ts";
 import {
@@ -43,21 +43,6 @@ describe("原生协议编辑模式", () => {
     doc.bindings = [];
     const back = projectToDoc(docToProject(doc));
     assert.equal(back.bindings.length, 0);
-  });
-  it("旧生成器仍能拿到可表达的点击动作", () => {
-    const doc = counterDoc();
-    doc.events.push({
-      id: "e-cBtn-longPress",
-      enabled: true,
-      trigger: { kind: "component", componentId: "cBtn", event: "longPress" },
-      actions: [{ id: "aNav", kind: "navigate", pageId: "pTwo" }],
-    });
-    const legacy = legacyForGenerator(docToProject(doc));
-    const btn = legacy.pages[0].nodes.find((n) => n.id === "cBtn")!;
-    assert.equal(btn.actions.some((a) => a.kind === "navigate" && a.pageName === "Two"), true);
-    // 示例工程（编辑器生成的 ID）转成原生模式后，旧生成器的 DSL 仍然有效。
-    const sample = legacyForGenerator(toNative(makeSample()));
-    assert.equal(validateDsl(projectToDsl(sample)).dsl !== null, true, JSON.stringify(validateDsl(projectToDsl(sample)).issues));
   });
   it("logicOf 只取逻辑部分", () => {
     const logic = logicOf(docToProject(counterDoc()));
