@@ -23,7 +23,7 @@ describe("blueos source emit", () => {
     assert.match(settings, /blueos\.window\.prompt|import prompt/);
     const manifest = artifact.files.find((file) => file.path === "src/manifest.json")?.text || "";
     assert.match(manifest, /"package": "com.example.hello"/);
-    assert.match(manifest, /"entry": "Home"/);
+    assert.match(manifest, /"entry": "pages\/Home"/);
     assert.match(manifest, /"designWidth": 466/);
     assert.match(manifest, /blueos\.window\.prompt/);
     const app = artifact.files.find((file) => file.path === "src/app.ux")?.text || "";
