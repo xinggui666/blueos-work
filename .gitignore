@@ -8,4 +8,11 @@ dist
 *.log
 .env
 .env.*
+!.env.example
 .DS_Store
+keystore.properties
+*.jks
+*.keystore
+!android/debug.keystore
+sign/
+*.pem

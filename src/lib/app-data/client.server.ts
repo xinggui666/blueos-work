@@ -278,7 +278,9 @@ function tokenIdentityKey(token: string): string {
             .digest("base64url");
         }
       }
-    } catch {}
+    } catch {
+      // 非 JWT token：退回整串哈希。
+    }
   }
   return createHash("sha256").update(token).digest("base64url");
 }
