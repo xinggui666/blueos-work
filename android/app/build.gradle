@@ -19,8 +19,21 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    signingConfigs {
+        debugInstall {
+            storeFile file("../debug.keystore")
+            storePassword "android"
+            keyAlias "workshop"
+            keyPassword "android"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debugInstall
+        }
         release {
+            signingConfig signingConfigs.debugInstall
             minifyEnabled false
         }
     }
