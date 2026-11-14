@@ -1,3 +1,4 @@
+import { loadAssets } from "./assets.server";
 import { checkDeliveryRevision } from "./delivery.server";
 /**
  * RPK 构建任务（规格第十三章、12.4）。
@@ -186,7 +187,7 @@ async function requestBuild(sql: Sql, userId: string, body: Record<string, unkno
       if (reason) throw new ApiError(403, `组件 ${c.name || c.type}：${reason}`);
     }
 
-  const source = generateNative(doc);
+  const source = generateNative(doc, await loadAssets(sql, userId, doc));
   if (!source.ok) {
     const first = source.issues.find((i) => i.level === "error");
     throw new ApiError(400, `工程校验未通过：${first ? `${first.path} ${first.message}` : "未知错误"}`, { issues: source.issues.slice(0, 50) });

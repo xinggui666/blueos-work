@@ -1,3 +1,4 @@
+import { assetUsage, decodeAsset, getAsset, loadAssets, pngAsset, storeAssets } from "./assets.server";
 import { checkDeliveryRevision } from "./delivery.server";
 import { createHash, randomBytes } from "node:crypto";
 import { getSql, withTransaction, type Sql } from "@/lib/db";
@@ -351,7 +352,7 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
   }
   if (blocked.size) throw forbidden(`工程里有当前账号未获授权的组件：${[...blocked].join("；")}`);
 
-  const key = `bproj2:${doc.project.id}:${digest}`;
+  const key = `bproj2-binary1:${doc.project.id}:${digest}`;
   const existing = await one<Row>(
     sql,
     "select id, status, file_name, sha256, artifact, exported from jobs where user_id = $1 and idempotency_key = $2",
@@ -369,7 +370,7 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
     };
   }
 
-  const packed = await packBproj(doc);
+  const packed = await packBproj(doc, Date.now(), await loadAssets(sql, userId, doc));
   const zip = packed.bytes;
   const zipBase64 = Buffer.from(zip).toString("base64");
   const fileSha = packed.sha256;
@@ -401,13 +402,22 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
     }
     if (!done?.id) throw new Error("导出任务占位失败");
     const jobId = String(done.id);
-    if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
-    await commitQuota(tx, userId, "export", jobId);
+    // Artifact format changed, not the user's purchase: carry forward same-content historical entitlement.
+    const legacy = await one<Row>(tx,
+      "select id, status, exported, artifact from jobs where user_id=$1 and idempotency_key=$2 and kind='export' for update",
+      [userId, `bproj2:${doc.project.id}:${digest}`]);
+    const previouslyPaid = Boolean(legacy?.status === "succeeded" && legacy.exported && legacy.artifact);
+    if (!previouslyPaid) {
+      if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
+      await commitQuota(tx, userId, "export", jobId);
+    } else {
+      await audit(tx, userId, "export.format-upgrade", jobId, { legacyJobId: legacy!.id }, { sha256: fileSha, charged: false });
+    }
     await tx.query(
       `update jobs set status = 'succeeded', message = $2, file_name = $3, sha256 = $4, artifact = $5, bytes = $6, exported = true where id = $1`,
       [jobId, "项目工程包已导出，不是 RPK", fileName, fileSha, zipBase64, zip.length],
     );
-    return { ok: true as const, fileName, sha256: fileSha, zipBase64, reused: false, charged: true, artifactType: "bproj" as const };
+    return { ok: true as const, fileName, sha256: fileSha, zipBase64, reused: previouslyPaid, upgraded: previouslyPaid, charged: !previouslyPaid, artifactType: "bproj" as const };
   });
 }
 
@@ -690,7 +700,7 @@ function componentCard(row: Row, installed: boolean) {
   };
 }
 
-const MAX_IMPORT_BYTES = 600_000;
+const MAX_IMPORT_BYTES = 8 * 1024 * 1024;
 
 /**
  * 导入 .bproj：完整性/Schema/依赖校验 → 预览；正式导入总是新建工程，绝不覆盖已有工程。
@@ -713,7 +723,7 @@ async function importBundle(sql: Sql, userId: string, body: Record<string, unkno
   const duplicateOf = existing ? String(existing.project_id ?? existing.id) : null;
   const report = { ok: preview.ok, from: preview.from, steps: preview.steps, integrity: preview.integrity, contentSha256: preview.contentSha256, issues: preview.issues.slice(0, 100), summary: preview.summary, duplicateOf };
   if (previewOnly) return report;
-  if (!preview.doc) throw new ApiError(400, preview.issues[0]?.message ?? "工程包无效");
+  if (!preview.ok || !preview.doc) throw new ApiError(400, preview.issues[0]?.message ?? "工程包无效");
   if (preview.integrity === "failed") throw new ApiError(400, "工程包校验失败");
   const mode = body.mode === "copy" ? "copy" : "new";
   if (duplicateOf && mode !== "copy") return { ...report, imported: false, duplicate: true, projectId: duplicateOf };
@@ -723,8 +733,10 @@ async function importBundle(sql: Sql, userId: string, body: Record<string, unkno
   doc.project.createdAt = Date.now();
   if (duplicateOf) doc.project.name = `${doc.project.name.slice(0, 34)} 副本`;
   const saved = await withTransaction(async (tx) => {
+    await storeAssets(tx, userId, doc.assets, preview.assetFiles ?? {});
     const res = await saveDoc(tx, userId, doc, { projectCap: () => projectCap(tx, userId), client });
-    if (res.ok && preview.contentSha256) {
+    if (!res.ok) throw new ApiError(409, "导入冲突，资源与工程均未保存");
+    if (preview.contentSha256) {
       await tx.query("insert into project_imports (user_id, content_sha256, project_id) values ($1,$2,$3) on conflict do nothing", [userId, preview.contentSha256, doc.project.id]);
     }
     return res;
@@ -748,6 +760,13 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     if (flags.maintenance_mode === "true") throw new ApiError(503, "系统维护中，暂时只能查看，不能修改。已下载的 RPK 和本地工程不受影响。");
   }
 
+  if (action === "adminProjectAssets") {
+    requirePerm(actor, "jobs.read");
+    return sql.query(
+      "select user_id,sha256,bytes,mime,created_at from project_binary_assets where ($1='' or user_id=$1) order by created_at desc limit 100",
+      [text(body.userId, 80)],
+    );
+  }
   if (isAdminBuildAction(action)) {
     requirePerm(actor, action === "adminBuilds" || action === "adminBuild" ? "jobs.read" : "builds.manage");
     return handleAdminBuildAction(sql, userId, action, body, (tx, act, target, before, after) => audit(tx, userId, act, target, before, after));
@@ -759,6 +778,20 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     return { ...(await me(sql, actor)), client };
   }
 
+  if (action === "assetUsage") return assetUsage(sql, userId);
+  if (action === "getAsset") return getAsset(sql, userId, body.sha256);
+  if (action === "uploadAsset") {
+    if (body.mime !== "image/png")
+      throw new ApiError(400, "目前仅支持 image/png，不接受 SVG、URL、字体或音频");
+    const data = decodeAsset(body.fileBase64),
+      asset = pngAsset(data);
+    if (body.sha256 !== undefined && body.sha256 !== asset.sha256)
+      throw new ApiError(400, "上传资源 SHA-256 不符");
+    const usage = await withTransaction((tx) =>
+      storeAssets(tx, userId, [asset], { [asset.path]: data }),
+    );
+    return { ok: true, asset, usage };
+  }
   if (action === "listProjects") return listProjects(sql, userId);
 
   if (action === "syncProject") {

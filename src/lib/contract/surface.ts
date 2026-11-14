@@ -3,6 +3,9 @@ export type ClientKind = (typeof CLIENTS)[number];
 
 export const SHARED_ACTIONS = [
   "me",
+  "uploadAsset",
+  "getAsset",
+  "assetUsage",
   "listProjects",
   "syncProject",
   "getProjectDoc",

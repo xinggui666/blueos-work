@@ -1,0 +1,13 @@
+node_modules/@blueos-toolkit/dsl-mvm/package.json
+node_modules/@blueos-toolkit/dsl-mvm/lib/loaders/resource-loader.js
+node_modules/@blueos-toolkit/packager/lib/signature/algorithm/index.js
+node_modules/@blueos-toolkit/packager/lib/plugins/resource-plugin.js
+node_modules/@blueos-toolkit/packager/package.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/examples/watch3005/package-lock.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/examples/watch3003/package-lock.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/examples/watch3004/package-lock.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/package-lock.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/examples/watch3006/package-lock.json
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/yarn.lock
+node_modules/@blueos-toolkit/dsl-mvm/watch-templates/watchapp-watchface-sample/examples/watch3002/package-lock.json
+node_modules/@blueos-toolkit/server/lib/preview/static/web.js

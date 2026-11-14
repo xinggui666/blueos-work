@@ -1,0 +1,118 @@
+{
+  "id": "blde2f662d273b7ff7e",
+  "projectId": "assetmwgg5czp",
+  "revision": 1,
+  "status": "succeeded",
+  "statusLabel": "成功",
+  "mode": "debug",
+  "packageName": "com.example.counter",
+  "versionName": "1.0",
+  "versionCode": 1,
+  "generator": "native-2.1.0-assets1",
+  "toolkit": "blueos-toolkit 1.9.45-beta.44",
+  "quotaState": "committed",
+  "cancelRequested": false,
+  "error": "",
+  "artifactName": "com.example.counter.debug.1.0.rpk",
+  "artifactSha256": "241dd835fe744879b71c41e2a3cf955d3e9540418af808ecd449956a5bc70f22",
+  "artifactBytes": 46815,
+  "sourceSha256": "e94d7fe3d0a4aa0de8b1341825cb4e54ce44145d40d6ceec83e069a0871f575c",
+  "createdAt": "2026-11-14T13:33:51.429Z",
+  "startedAt": "2026-11-14T13:33:53.247Z",
+  "finishedAt": "2026-11-14T13:33:56.301Z",
+  "retryOf": null,
+  "log": "任务 blde2f662d273b7ff7e｜blueos-toolkit 1.9.45-beta.44｜沙箱 bwrap｜debug\n[INFO] blueos-toolkit: 1.9.45-beta.44; babel: 7.29.13; webpack: 5.89.0;\n[INFO] 配置环境：{\"NODE_PLATFORM\":\"cli\",\"NODE_PHASE\":\"dev\"}\n[INFO] 获取到app文件后缀: ux\n[LOG] mac / linux 端暂无 cjson 工具\n[INFO] Build Time Cost: 0.876s\n[LOG] ### App Loader ### 项目构建启用了内置 debug 签名\n[LOG] ### App Loader ### 项目构建并生成文件：com.example.counter.debug.1.0.rpk\n[LOG] ### App Server ### 没有记录手机地址，不会通知手机更新rpk文件\n[INFO] Build Time Cost: 0.334s\n[LOG] ### App Loader ### 项目构建启用了内置 debug 签名\n[LOG] ### App Loader ### 项目构建并生成文件：com.example.counter.debug.1.0.rpk\n[LOG] ### App Server ### 没有记录手机地址，不会通知手机更新rpk文件\n<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/work/app/node_modules/.cache/1.9.45-beta.44/cli/dev/false/BUILD/webpack/default-development/0.pack_' -> '/work/app/node_modules/.cache/1.9.45-beta.44/cli/dev/false/BUILD/webpack/default-development/0.pack'\n\n退出码 0，用时 2.8 秒\n产物 com.example.counter.debug.1.0.rpk，46815 字节，SHA-256 241dd835fe744879b71c41e2a3cf955d3e9540418af808ecd449956a5bc70f22\n✔ 大小 46815 字节\n✔ zip 结构 6 个条目\n✔ 签名证书 META-INF/CERT \n✔ manifest.json \n✔ 包名 com.example.counter\n✔ 版本号 1.0 (1)\n✔ 调试/正式 debug 包\n✔ 页面路由 pages/Home, pages/Two\n✔ 页面代码包 .vru 1700496 字节\n✔ 页面已编译进包 2 个页面\n✔ 资源 assets/6200a8c59fdf2fba3720b4ca14aec195535ce4b25ea4f912c785ec338aea50c7.png 4196 字节\n✔ 资源 assets/dafda85e664f32f057ec21c98a551210f34a90741b21940b12c3b1249ab68533.png 1440773 字节\n",
+  "verify": {
+    "ok": true,
+    "bytes": 46815,
+    "checks": [
+      {
+        "ok": true,
+        "name": "大小",
+        "detail": "46815 字节"
+      },
+      {
+        "ok": true,
+        "name": "zip 结构",
+        "detail": "6 个条目"
+      },
+      {
+        "ok": true,
+        "name": "签名证书 META-INF/CERT",
+        "detail": ""
+      },
+      {
+        "ok": true,
+        "name": "manifest.json",
+        "detail": ""
+      },
+      {
+        "ok": true,
+        "name": "包名",
+        "detail": "com.example.counter"
+      },
+      {
+        "ok": true,
+        "name": "版本号",
+        "detail": "1.0 (1)"
+      },
+      {
+        "ok": true,
+        "name": "调试/正式",
+        "detail": "debug 包"
+      },
+      {
+        "ok": true,
+        "name": "页面路由",
+        "detail": "pages/Home, pages/Two"
+      },
+      {
+        "ok": true,
+        "name": "页面代码包 .vru",
+        "detail": "1700496 字节"
+      },
+      {
+        "ok": true,
+        "name": "页面已编译进包",
+        "detail": "2 个页面"
+      },
+      {
+        "ok": true,
+        "name": "资源 assets/6200a8c59fdf2fba3720b4ca14aec195535ce4b25ea4f912c785ec338aea50c7.png",
+        "detail": "4196 字节"
+      },
+      {
+        "ok": true,
+        "name": "资源 assets/dafda85e664f32f057ec21c98a551210f34a90741b21940b12c3b1249ab68533.png",
+        "detail": "1440773 字节"
+      }
+    ],
+    "sha256": "241dd835fe744879b71c41e2a3cf955d3e9540418af808ecd449956a5bc70f22"
+  },
+  "components": [
+    {
+      "type": "button",
+      "version": "1.0.0",
+      "componentId": "builtin"
+    },
+    {
+      "type": "image",
+      "version": "1.0.0",
+      "componentId": "builtin"
+    },
+    {
+      "type": "text",
+      "version": "1.0.0",
+      "componentId": "builtin"
+    }
+  ],
+  "environment": {
+    "host": "grok-bot-vm-478086653",
+    "node": "v24.22.1",
+    "sandbox": "bwrap",
+    "signing": false,
+    "memoryMb": 1536,
+    "timeoutSec": 300
+  },
+  "runtimeSha256": "250674a4b1ff375c2a83317bf29ff79224678e7a1149b40c0e48ea18a2592bfc"
+}

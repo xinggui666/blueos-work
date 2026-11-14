@@ -7,6 +7,9 @@ import { inspectBproj, type ImportPreview } from "@/lib/protocol/bproj";
 import { browserInflate } from "@/lib/protocol/zip";
 import { migrateToCurrent } from "@/lib/protocol/migrate";
 import { docToProject } from "@/lib/protocol/editor";
+import { workspace, isCurrent } from "@/lib/platform/workspace";
+import { call, errorText } from "@/lib/platform/client";
+import type { Project } from "@/lib/blueos/model";
 import { contentKey } from "@/lib/platform/client";
 import type { DeviceShape, TemplateId } from "@/lib/blueos/model";
 import { useStudio, useStudioHydrated } from "@/lib/blueos/store";
@@ -64,10 +67,21 @@ export function HomeView() {
           <p className="text-sm text-muted">{cloud.detail || "登录后的工程会写到云端"}</p>
         </div>
         <div className="flex gap-2">
-          <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-4 text-sm" onClick={() => fileRef.current?.click()}>
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-line px-4 text-sm"
+            onClick={() => fileRef.current?.click()}
+          >
             导入
           </button>
-          <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg" onClick={() => { setError(""); setOpen(true); }}>
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg"
+            onClick={() => {
+              setError("");
+              setOpen(true);
+            }}
+          >
             <Plus className="size-4" />
             新建
           </button>
@@ -81,33 +95,84 @@ export function HomeView() {
             const file = event.target.files?.[0];
             event.target.value = "";
             if (!file) return;
-            void file.arrayBuffer().then(async (buffer) => {
-              const bytes = new Uint8Array(buffer);
-              let preview: Pick<ImportPreview, "ok" | "doc" | "issues" | "integrity" | "summary">;
-              if (file.name.endsWith(".json")) {
-                const res = migrateToCurrent(JSON.parse(new TextDecoder().decode(bytes)));
-                preview = { ok: res.ok, doc: res.doc, issues: res.issues, integrity: "legacy", summary: null };
-              } else preview = await inspectBproj(bytes, browserInflate);
-              const errors = preview.issues.filter((issue) => issue.level === "error");
-              if (!preview.doc || preview.integrity === "failed") {
-                setError(`不能导入：${errors.slice(0, 3).map((issue) => issue.message).join("；") || "文件无效"}`);
-                return;
-              }
-              const project = docToProject(preview.doc);
-              const key = contentKey(project);
-              const same = useStudio.getState().projects.find((item) => contentKey(item) === key);
-              const lines = [
-                `工程：${preview.doc.project.name}（${preview.doc.project.packageName}）`,
-                `页面 ${preview.doc.pages.length} 个，组件 ${preview.doc.pages.reduce((n, page) => n + page.components.length, 0)} 个，事件 ${preview.doc.events.length} 个，函数 ${preview.doc.functions.length} 个`,
-                preview.integrity === "verified" ? "完整性校验：通过" : "旧版工程包：没有校验信息",
-                errors.length ? `有 ${errors.length} 个问题需要导入后修复：${errors.slice(0, 2).map((issue) => issue.message).join("；")}` : "",
-                same ? `已存在内容相同的工程“${same.name}”，继续将导入为新副本` : "",
-                "导入会新建工程，不会覆盖已有工程。继续吗？",
-              ].filter(Boolean);
-              if (!window.confirm(lines.join("\n"))) return;
-              const id = importProject({ ...project, protocolExtras: project.protocolExtras ? { ...project.protocolExtras, revision: 0 } : undefined, name: same ? `${project.name.slice(0, 34)} 副本` : project.name });
-              void navigate({ to: "/edit/$id", params: { id } });
-            }).catch(() => setError("这个文件不能导入。请使用本站下载的工程包。"));
+            if (file.size > 8 * 1024 * 1024) {
+              setError("工程包不得超过 8MiB");
+              return;
+            }
+            const scope = workspace();
+            void file
+              .arrayBuffer()
+              .then(async (buffer) => {
+                if (!isCurrent(scope)) throw new Error("账号或服务器已切换，取消导入");
+                const bytes = new Uint8Array(buffer);
+                let preview: Pick<ImportPreview, "ok" | "doc" | "issues" | "integrity" | "summary">;
+                if (file.name.endsWith(".json")) {
+                  const res = migrateToCurrent(JSON.parse(new TextDecoder().decode(bytes)));
+                  preview = {
+                    ok: res.ok,
+                    doc: res.doc,
+                    issues: res.issues,
+                    integrity: "legacy",
+                    summary: null,
+                  };
+                } else preview = await inspectBproj(bytes, browserInflate);
+                const errors = preview.issues.filter((issue) => issue.level === "error");
+                if (!preview.ok || !preview.doc || preview.integrity === "failed") {
+                  setError(
+                    `不能导入：${errors.slice(0, 3).map((issue) => issue.message).join("；") || "文件无效"}`,
+                  );
+                  return;
+                }
+                const project = docToProject(preview.doc);
+                const key = contentKey(project);
+                const same = useStudio.getState().projects.find((item) => contentKey(item) === key);
+                const lines = [
+                  `工程：${preview.doc.project.name}（${preview.doc.project.packageName}）`,
+                  `页面 ${preview.doc.pages.length} 个，组件 ${preview.doc.pages.reduce((n, page) => n + page.components.length, 0)} 个，事件 ${preview.doc.events.length} 个，函数 ${preview.doc.functions.length} 个`,
+                  preview.integrity === "verified"
+                    ? "完整性校验：通过"
+                    : "旧版工程包：没有校验信息",
+                  errors.length
+                    ? `有 ${errors.length} 个问题需要导入后修复：${errors.slice(0, 2).map((issue) => issue.message).join("；")}`
+                    : "",
+                  same ? `已存在内容相同的工程“${same.name}”，继续将导入为新副本` : "",
+                  preview.doc.assets.length
+                    ? "包含二进制资源：确认后会先原子导入服务器，离线时不可导入。"
+                    : "",
+                  "导入会新建工程，不会覆盖已有工程。继续吗？",
+                ].filter(Boolean);
+                if (!window.confirm(lines.join("\n"))) return;
+                if (!isCurrent(scope)) throw new Error("账号或服务器已切换，取消导入");
+                if (preview.doc.assets.length) {
+                  if (file.name.endsWith(".json"))
+                    throw new Error("资源 JSON 没有二进制内容，请使用包含资源的 .bproj");
+                  let raw = "";
+                  for (let p = 0; p < bytes.length; p += 32768)
+                    raw += String.fromCharCode(...bytes.subarray(p, p + 32768));
+                  const result = await call<{ project: Project; projectId: string }>(
+                    "importBundle",
+                    { fileBase64: btoa(raw), mode: "copy" },
+                  );
+                  if (!isCurrent(scope)) throw new Error("账号或服务器已切换，未改变本地工程");
+                  useStudio.setState((state) => ({
+                    projects: [
+                      result.project,
+                      ...state.projects.filter((p) => p.id !== result.projectId),
+                    ],
+                  }));
+                  void navigate({ to: "/edit/$id", params: { id: result.projectId } });
+                  return;
+                }
+                const id = importProject({
+                  ...project,
+                  protocolExtras: project.protocolExtras
+                    ? { ...project.protocolExtras, revision: 0 }
+                    : undefined,
+                  name: same ? `${project.name.slice(0, 34)} 副本` : project.name,
+                });
+                void navigate({ to: "/edit/$id", params: { id } });
+              })
+              .catch((reason) => setError(errorText(reason)));
           }}
         />
       </header>
@@ -116,7 +181,9 @@ export function HomeView() {
       <section className="mt-6 rounded-xl border border-line bg-surface px-4 py-4">
         <h1 className="text-xl font-semibold tracking-tight">编辑免费，打包另计</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          注册后可以建页面、摆组件、预览和保存。工程包和 RPK 分开计分。下载工程包只扣工程下载积分，不会得到源码或安装包。RPK 由服务器用 BlueOS 官方工具链编译，编译成功才扣分，还没有在真机上验证。
+          注册后可以建页面、摆组件、预览和保存。工程包和 RPK
+          分开计分。下载工程包只扣工程下载积分，不会得到源码或安装包。RPK 由服务器用 BlueOS
+          官方工具链编译，编译成功才扣分，还没有在真机上验证。
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
           <li className="rounded-full border border-line px-3 py-1">工程包 .bproj</li>
@@ -147,9 +214,19 @@ export function HomeView() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-base font-semibold">{project.name}</span>
                   <span className="mt-1 block truncate text-sm text-muted">{project.appName}</span>
-                  <span className="mt-1 block truncate font-mono text-xs text-muted">{project.packageName}</span>
+                  <span className="mt-1 block truncate font-mono text-xs text-muted">
+                    {project.packageName}
+                  </span>
                   <span className="mt-2 block text-xs text-muted">
-                    {project.pages.length} 页 · {project.nav?.kind === "bottom" ? "底部导航" : project.nav?.kind === "top" ? "顶部导航" : project.nav?.kind === "side" ? "侧边导航" : "无导航"} · {project.revisions.length} 个修订
+                    {project.pages.length} 页 ·{" "}
+                    {project.nav?.kind === "bottom"
+                      ? "底部导航"
+                      : project.nav?.kind === "top"
+                        ? "顶部导航"
+                        : project.nav?.kind === "side"
+                          ? "侧边导航"
+                          : "无导航"}{" "}
+                    · {project.revisions.length} 个修订
                   </span>
                 </span>
               </Link>
@@ -185,7 +262,12 @@ export function HomeView() {
       )}
 
       {open ? (
-        <div className="fixed inset-0 z-40 grid overflow-y-auto place-items-end bg-bg/80 p-4 sm:place-items-center" role="dialog" aria-modal="true" aria-labelledby="new-project-title">
+        <div
+          className="fixed inset-0 z-40 grid overflow-y-auto place-items-end bg-bg/80 p-4 sm:place-items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-project-title"
+        >
           <form
             className="max-h-full w-full max-w-md overflow-y-auto rounded-xl border border-line bg-surface p-4"
             onSubmit={(event) => {
@@ -193,7 +275,9 @@ export function HomeView() {
               submit();
             }}
           >
-            <h2 id="new-project-title" className="text-lg font-semibold">新建应用</h2>
+            <h2 id="new-project-title" className="text-lg font-semibold">
+              新建应用
+            </h2>
             <div className="mt-4 grid grid-cols-2 gap-2">
               {TEMPLATES.map((item) => (
                 <button
@@ -203,22 +287,38 @@ export function HomeView() {
                   onClick={() => setForm({ ...form, template: item.id })}
                 >
                   <span className="block text-sm font-semibold">{item.label}</span>
-                  <span className={`mt-1 block text-xs ${form.template === item.id ? "text-accent-fg" : "text-muted"}`}>{item.detail}</span>
+                  <span
+                    className={`mt-1 block text-xs ${form.template === item.id ? "text-accent-fg" : "text-muted"}`}
+                  >
+                    {item.detail}
+                  </span>
                 </button>
               ))}
             </div>
             <label className="mt-4 block text-sm text-muted">
               工程名
-              <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 text-fg" />
+              <input
+                value={form.name}
+                onChange={(event) => setForm({ ...form, name: event.target.value })}
+                className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 text-fg"
+              />
             </label>
             <label className="mt-3 block text-sm text-muted">
               应用名
-              <input value={form.appName} onChange={(event) => setForm({ ...form, appName: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 text-fg" />
+              <input
+                value={form.appName}
+                onChange={(event) => setForm({ ...form, appName: event.target.value })}
+                className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 text-fg"
+              />
               <span className="mt-1 block text-xs">商店名称建议不超过 6 个汉字。</span>
             </label>
             <label className="mt-3 block text-sm text-muted">
               包名
-              <input value={form.packageName} onChange={(event) => setForm({ ...form, packageName: event.target.value })} className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 font-mono text-sm text-fg" />
+              <input
+                value={form.packageName}
+                onChange={(event) => setForm({ ...form, packageName: event.target.value })}
+                className="mt-1 min-h-11 w-full rounded-md border border-line bg-bg px-3 font-mono text-sm text-fg"
+              />
             </label>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {(["watch-round", "watch-square"] as DeviceShape[]).map((device) => (
@@ -234,10 +334,17 @@ export function HomeView() {
             </div>
             {error ? <p className="mt-3 text-sm text-warn">{error}</p> : null}
             <div className="mt-4 flex gap-2">
-              <button type="button" className="min-h-11 flex-1 rounded-md border border-line" onClick={() => setOpen(false)}>
+              <button
+                type="button"
+                className="min-h-11 flex-1 rounded-md border border-line"
+                onClick={() => setOpen(false)}
+              >
                 取消
               </button>
-              <button type="submit" className="min-h-11 flex-1 rounded-md bg-accent font-semibold text-accent-fg">
+              <button
+                type="submit"
+                className="min-h-11 flex-1 rounded-md bg-accent font-semibold text-accent-fg"
+              >
                 创建并编辑
               </button>
             </div>

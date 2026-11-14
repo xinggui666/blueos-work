@@ -70,6 +70,8 @@ export function render(rt, pageId) {
       else if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') view[key] = v
       else view[key] = toText(v)
     }
+    // A runtime setProp/binding may compute a URL. Only frozen local assets can reach native image.
+    if (page.components[i].type === 'image' && doc.assetPaths.indexOf(view.src) < 0) view.src = ''
     out[id] = view
   }
   return out

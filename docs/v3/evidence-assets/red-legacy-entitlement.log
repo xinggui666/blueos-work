@@ -1,0 +1,28 @@
+PASS signup does not auto-promote admin; binary actions require authentication
+PASS actual PNG upload, SHA, owner read and per-owner dedupe
+PASS wrong MIME/SVG/digest/corrupt header/oversize rejected without storage changes
+PASS real PNG larger than normal 1MB API budget succeeds via bounded binary action
+PASS cloud save checks owner resources and rejects undeclared/remote image paths
+PASS bproj includes exact PNG bytes; repeat download idempotent; fixed revision gate rejects stale
+PASS cross-account bproj import transfers actual bytes atomically, original untouched
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+3 !== 4
+
+    at file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:212:12
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async step (file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:30:3)
+    at async file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:206:3 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 3,
+  expected: 4,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

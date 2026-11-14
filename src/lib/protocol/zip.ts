@@ -69,7 +69,7 @@ export function writeZip(files: { path: string; data: Uint8Array }[]): Uint8Arra
 }
 
 export type Inflate = (data: Uint8Array) => Promise<Uint8Array> | Uint8Array;
-export const ZIP_LIMITS = { totalBytes: 8 * 1024 * 1024, entries: 64, entryBytes: 4 * 1024 * 1024 };
+export const ZIP_LIMITS = { totalBytes: 8 * 1024 * 1024, entries: 128, entryBytes: 4 * 1024 * 1024 };
 
 /** 通过中央目录读取（能正确处理带数据描述符的 ZIP），并检查路径穿越、条目数和解压大小。 */
 export async function readZip(
@@ -90,11 +90,12 @@ export async function readZip(
   if (count > ZIP_LIMITS.entries) throw new Error("压缩包条目过多");
   let p = view.getUint32(eocd + 16, true);
   const dec = new TextDecoder();
-  const files: Record<string, Uint8Array> = {};
+  const files: Record<string, Uint8Array> = Object.create(null) as Record<string, Uint8Array>;
   let total = 0;
   for (let i = 0; i < count; i++) {
     if (p + 46 > bytes.length || view.getUint32(p, true) !== 0x02014b50)
       throw new Error("ZIP 目录损坏");
+    const flags = view.getUint16(p + 8, true);
     const method = view.getUint16(p + 10, true);
     const crc = view.getUint32(p + 16, true);
     const csize = view.getUint32(p + 20, true);
@@ -105,14 +106,18 @@ export async function readZip(
     const lho = view.getUint32(p + 42, true);
     const name = dec.decode(bytes.subarray(p + 46, p + 46 + nlen));
     p += 46 + nlen + xlen + clen;
+    if (Object.hasOwn(files, name))
+      throw new Error(`ZIP 文件重复：${name}`);
     if (name.endsWith("/")) continue;
     if (name.startsWith("/") || name.includes("..") || name.includes("\\"))
       throw new Error(`压缩包路径不安全：${name}`);
     if (usize > ZIP_LIMITS.entryBytes) throw new Error(`文件 ${name} 过大`);
     total += usize;
     if (total > ZIP_LIMITS.totalBytes) throw new Error("解压后总大小超过限制");
+    if (lho + 30 > bytes.length || flags & 1) throw new Error("ZIP 条目越界或已加密");
     if (view.getUint32(lho, true) !== 0x04034b50) throw new Error("ZIP 条目损坏");
     const start = lho + 30 + view.getUint16(lho + 26, true) + view.getUint16(lho + 28, true);
+    if (start + csize > bytes.length) throw new Error("ZIP 条目数据越界");
     const raw = bytes.subarray(start, start + csize);
     let data: Uint8Array;
     if (method === 0) data = raw.slice();
@@ -132,5 +137,26 @@ export async function browserInflate(data: Uint8Array): Promise<Uint8Array> {
   const stream = new Blob([data as BlobPart])
     .stream()
     .pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader(),
+    chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    while (true) {
+      const item = await reader.read();
+      if (item.done) break;
+      size += item.value.length;
+      if (size > ZIP_LIMITS.entryBytes) throw new Error("解压文件超过限制");
+      chunks.push(item.value);
+    }
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
 }

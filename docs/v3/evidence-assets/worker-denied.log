@@ -1,0 +1,4 @@
+[worker] BUILD_SANDBOX=none is forbidden: only auto/bwrap are supported; unsandboxed builds are disabled
+
+actual denied worker exit=1
+PASS no denied-worker heartbeat/registration

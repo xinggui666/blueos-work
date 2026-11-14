@@ -1,3 +1,4 @@
+import { loadAssets } from "./assets.server";
 /**
  * 工程存储（统一协议 v2）。
  * - projects.body 保存协议文档；旧的编辑器格式在读取时自动迁移（旧工程永远能打开）。
@@ -120,6 +121,7 @@ export async function saveDoc(
     if ((count?.count ?? 0) >= cap)
       throw new ApiError(403, `当前权益最多保存 ${cap} 个工程。编辑已有工程不受影响。`);
   }
+  await loadAssets(sql, userId, doc);
   const digest = await contentDigest(doc);
   const serverRevision = Number(current?.revision ?? 0);
   if (current && current.content_sha256 === digest) {

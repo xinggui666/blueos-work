@@ -23,6 +23,8 @@ export const MAINTENANCE_READ_ACTIONS = [
   "listRevisions",
   "validateProject",
   "previewImport",
+  "getAsset",
+  "assetUsage",
   "listJobs",
   "downloadJob",
   "listBuilds",

@@ -3,27 +3,38 @@ import { requireUserId } from "@/lib/auth/verify.server";
 import { isClient } from "@/lib/contract/surface";
 import { ApiError, statusOf } from "@/lib/platform/errors";
 
-/** 请求体上限。工程本身限制 400KB，这里留出 JSON 包装和修订快照的余量。 */
-const MAX_BODY_BYTES = 1_000_000;
+import {
+  BINARY_REQUEST_BYTES,
+  NORMAL_REQUEST_BYTES,
+  boundedRequestText,
+  requestLimit,
+} from "@/lib/platform/request-limits";
 
 export const Route = createFileRoute("/api/v1/platform")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const declared = Number(request.headers.get("content-length") || 0);
-        if (declared > MAX_BODY_BYTES) return Response.json({ error: "请求过大" }, { status: 413 });
+        if (declared > BINARY_REQUEST_BYTES) return Response.json({ error: "请求过大" }, { status: 413 });
         const header = request.headers.get("authorization") || "";
         const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
         try {
           const userId = await requireUserId(token || undefined);
-          const raw = await request.text();
-          if (Buffer.byteLength(raw) > MAX_BODY_BYTES) return Response.json({ error: "请求过大" }, { status: 413 });
+          let raw: string;
+          try {
+            raw = await boundedRequestText(request);
+          } catch {
+            return Response.json({ error: "请求过大或编码无效" }, { status: 413 });
+          }
+          const rawBytes = Buffer.byteLength(raw);
           let body: { action?: unknown; payload?: unknown; client?: unknown };
           try {
             body = JSON.parse(raw) as typeof body;
           } catch {
-            return Response.json({ error: "请求不是合法 JSON" }, { status: 400 });
+            return Response.json({ error: rawBytes > NORMAL_REQUEST_BYTES ? "请求过大" : "请求不是合法 JSON" }, { status: rawBytes > NORMAL_REQUEST_BYTES ? 413 : 400 });
           }
+          if (rawBytes > requestLimit(body && body.action))
+            return Response.json({ error: "请求过大" }, { status: 413 });
           if (!body || typeof body !== "object" || typeof body.action !== "string" || !/^[a-zA-Z]{2,40}$/.test(body.action)) {
             return Response.json({ error: "无效请求" }, { status: 400 });
           }

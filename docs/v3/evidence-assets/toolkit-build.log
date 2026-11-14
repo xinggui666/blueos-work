@@ -1,0 +1,14 @@
+[INFO] blueos-toolkit: 1.9.45-beta.44; babel: 7.29.13; webpack: 5.89.0;
+[INFO] 配置环境：{"NODE_PLATFORM":"cli","NODE_PHASE":"dev"}
+[INFO] 获取到app文件后缀: ux
+[LOG] mac / linux 端暂无 cjson 工具
+[INFO] Build Time Cost: 0.775s
+[LOG] ### App Loader ### 项目构建启用了内置 debug 签名
+[LOG] ### App Loader ### 项目构建并生成文件：com.example.counter.debug.1.0.rpk
+[LOG] ### App Server ### 没有记录手机地址，不会通知手机更新rpk文件
+[INFO] Build Time Cost: 0.31s
+[LOG] ### App Loader ### 项目构建启用了内置 debug 签名
+[LOG] ### App Loader ### 项目构建并生成文件：com.example.counter.debug.1.0.rpk
+[LOG] ### App Server ### 没有记录手机地址，不会通知手机更新rpk文件
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/tmp/tmp.BrsXvjySLY/app/node_modules/.cache/1.9.45-beta.44/cli/dev/false/BUILD/webpack/default-development/0.pack_' -> '/tmp/tmp.BrsXvjySLY/app/node_modules/.cache/1.9.45-beta.44/cli/dev/false/BUILD/webpack/default-development/0.pack'
+7c3f0f1f19dd76f316ab768c36952f4b8e2a0e89b30d6b07ac83a3dde803b96a  com.example.counter.debug.1.0.rpk

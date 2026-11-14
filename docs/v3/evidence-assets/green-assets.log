@@ -1,0 +1,15 @@
+✔ PNG actual bytes survive bproj pack/inspect with digest (47.642011ms)
+✔ metadata-only and tampered resources must not export (1.768098ms)
+✔ import rejects missing resource even if project digest is valid (2.624725ms)
+✔ native source must copy real resource bytes and fail without bytes (7.163044ms)
+✔ legacy asset-free bproj remains importable (2.051343ms)
+✔ ZIP duplicate files and traversal are rejected (0.440557ms)
+✔ PNG headers, CRC, truncation and active SVG rejected (0.375957ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 304.279149

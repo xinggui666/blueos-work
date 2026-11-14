@@ -45,3 +45,9 @@ __pycache__/
 
 # V3 Android recovery raw evidence (no private signing/configuration files).
 !/docs/v3/evidence-android-boot/*.log
+
+# Phase 3 bounded binary-resource evidence; generated binaries stay in versioned deliveries.
+!/docs/v3/evidence-assets/*.log
+/docs/v3/evidence-assets/*.zip
+/docs/v3/evidence-assets/rpk/
+/docs/v3/evidence-assets/production/

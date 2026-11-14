@@ -3,6 +3,7 @@
  * 不包含生成器、服务端源码或商业组件实现；不是 RPK。
  * 导入：完整性校验 → 版本识别与迁移 → Schema/语义校验 → 依赖与资源检查 → 预览信息。
  */
+import { PROJECT_ASSET_MAX_BYTES, assertResourceReferences, checkPngPixels, checkAsset, type AssetFiles } from "./assets.ts";
 import { migrateToCurrent, type DetectedVersion } from "./migrate.ts";
 import { PROTOCOL_FORMAT, SCHEMA_VERSION, type ProjectDoc } from "./schema.ts";
 import type { ProtocolIssue } from "./validate.ts";
@@ -56,7 +57,24 @@ const README =
 export async function packBproj(
   doc: ProjectDoc,
   exportedAt = Date.now(),
+  assetFiles: AssetFiles = {},
 ): Promise<{ bytes: Uint8Array; manifest: BprojManifest; sha256: string }> {
+  assertResourceReferences(doc);
+  if (doc.assets.reduce((n, a) => n + a.bytes, 0) > PROJECT_ASSET_MAX_BYTES)
+    throw new Error("工程资源总量超过 6MiB");
+  const paths = new Set<string>();
+  const resources: { path: string; data: Uint8Array }[] = [];
+  for (const asset of doc.assets) {
+    if (paths.has(asset.path)) throw new Error(`资源路径重复 ${asset.path}`);
+    paths.add(asset.path);
+    const data = assetFiles[asset.path];
+    if (!data) throw new Error(`资源 ${asset.path} 缺失，不能导出只有清单的工程包`);
+    checkAsset(asset, data);
+    await checkPngPixels(data);
+    if ((await sha256Hex(data)) !== asset.sha256)
+      throw new Error(`资源 ${asset.path} SHA-256 不符`);
+    resources.push({ path: asset.path, data });
+  }
   const enc = new TextEncoder();
   const projectBytes = enc.encode(JSON.stringify(doc, null, 2));
   const readmeBytes = enc.encode(README);
@@ -77,16 +95,23 @@ export async function packBproj(
     exportedAt,
     officialBuild: false,
   };
+  for (const resource of resources)
+    manifest.files[resource.path] = {
+      sha256: await sha256Hex(resource.data),
+      bytes: resource.data.length,
+    };
   const bytes = writeZip([
     { path: "manifest.json", data: enc.encode(JSON.stringify(manifest, null, 2)) },
     { path: "project.json", data: projectBytes },
     { path: "README.txt", data: readmeBytes },
+    ...resources,
   ]);
   return { bytes, manifest, sha256: await sha256Hex(bytes) };
 }
 
 export type ImportPreview = {
   ok: boolean;
+  assetFiles?: AssetFiles;
   doc: ProjectDoc | null;
   from: DetectedVersion | "invalid";
   steps: string[];
@@ -142,8 +167,33 @@ export async function inspectBproj(bytes: Uint8Array, inflate?: Inflate): Promis
   }
   const issues: ProtocolIssue[] = [];
   let integrity: ImportPreview["integrity"] = "legacy";
+  if (manifest && (typeof manifest !== "object" || Array.isArray(manifest)))
+    return fail("工程清单格式无效");
   if (manifest && Number(manifest.version) >= 2) {
+    if (
+      manifest.version !== BPROJ_VERSION ||
+      manifest.format !== "bproj" ||
+      manifest.projectFormat !== PROTOCOL_FORMAT ||
+      manifest.schemaVersion !== SCHEMA_VERSION
+    )
+      return fail("不支持的工程包/协议版本");
+    if (
+      !manifest.files ||
+      typeof manifest.files !== "object" ||
+      Array.isArray(manifest.files) ||
+      Object.keys(manifest.files).length > 128
+    )
+      return fail("资源清单无效");
     for (const [name, info] of Object.entries(manifest.files ?? {})) {
+      if (
+        !info ||
+        typeof info !== "object" ||
+        !Number.isSafeInteger(info.bytes) ||
+        info.bytes < 0 ||
+        typeof info.sha256 !== "string" ||
+        !/^[0-9a-f]{64}$/.test(info.sha256)
+      )
+        return fail(`文件 ${name} 清单格式无效`);
       const data = files[name];
       if (!data) return fail(`清单里的文件 ${name} 缺失`);
       if ((await sha256Hex(data)) !== info.sha256 || data.length !== info.bytes)
@@ -178,7 +228,36 @@ export async function inspectBproj(bytes: Uint8Array, inflate?: Inflate): Promis
     }
   }
   const doc = migrated.doc;
+  const assetFiles: AssetFiles = Object.create(null) as AssetFiles;
+  if (doc) {
+    const allowed = new Set([
+      "project.json",
+      "manifest.json",
+      "README.txt",
+      ...doc.assets.map((a) => a.path),
+    ]);
+    for (const name of Object.keys(files))
+      if (!allowed.has(name)) return fail(`工程包包含未声明文件 ${name}`);
+    for (const asset of doc.assets) {
+      const data = files[asset.path];
+      if (!data) return fail(`资源 ${asset.path} 缺失（旧版只有元数据的资源无法自动恢复）`);
+      try {
+        checkAsset(asset, data);
+        await checkPngPixels(data);
+      } catch (error) {
+        return fail((error as Error).message);
+      }
+      if (
+        (await sha256Hex(data)) !== asset.sha256 ||
+        (integrity === "verified" &&
+          (!manifest?.files?.[asset.path] || manifest.files[asset.path].sha256 !== asset.sha256))
+      )
+        return fail(`资源 ${asset.path} 摘要或清单不符`);
+      assetFiles[asset.path] = data;
+    }
+  }
   return {
+    assetFiles,
     ok: migrated.ok,
     doc,
     from: migrated.from,

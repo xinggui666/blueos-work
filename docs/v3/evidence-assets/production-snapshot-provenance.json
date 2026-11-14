@@ -1,0 +1,19 @@
+{
+  "taskId": "bldf6810bb9513e851f",
+  "revision": 1,
+  "newerRevision": 2,
+  "sourceSha256": "e94d7fe3d0a4aa0de8b1341825cb4e54ce44145d40d6ceec83e069a0871f575c",
+  "assets": [
+    {
+      "path": "assets/6200a8c59fdf2fba3720b4ca14aec195535ce4b25ea4f912c785ec338aea50c7.png",
+      "bytes": 4196,
+      "sha256": "6200a8c59fdf2fba3720b4ca14aec195535ce4b25ea4f912c785ec338aea50c7"
+    },
+    {
+      "path": "assets/dafda85e664f32f057ec21c98a551210f34a90741b21940b12c3b1249ab68533.png",
+      "bytes": 1440773,
+      "sha256": "dafda85e664f32f057ec21c98a551210f34a90741b21940b12c3b1249ab68533"
+    }
+  ],
+  "excludedNewAsset": "assets/967803b7fb2ccab764d63cf3b227de84e436644eba67e0d9a49d2fc583bea7f1.png"
+}
