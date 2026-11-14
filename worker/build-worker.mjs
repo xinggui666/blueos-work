@@ -321,6 +321,7 @@ while (!stopping) {
   try {
     await heartbeat();
     await sweepStale();
+    await pool.query("select activate_membership_credits()").catch((error) => console.error("[worker] membership activation requires operator review", error.code || "policy failure"));
     await promote();
     const task = await claim();
     if (task) {

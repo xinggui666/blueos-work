@@ -23,9 +23,7 @@ def allowed(name):
         return False
     if p.name.startswith('.env') and p.name != '.env.example':
         return False
-    if p.name == 'keystore.properties' or p.suffix in {'.jks', '.pem', '.dump'}:
-        return False
-    if p.suffix == '.keystore' and name != 'android/debug.keystore':
+    if p.name.lower() == 'keystore.properties' or p.suffix.lower() in {'.jks', '.pem', '.dump', '.keystore', '.p12', '.pfx', '.key'}:
         return False
     return True
 
@@ -79,7 +77,7 @@ def write_deploy(out):
             for p in sorted((ROOT / directory).rglob('*')):
                 if p.is_file():
                     add(p, str(p.relative_to(ROOT)))
-        for name in ['migrate.mjs', 'migration-plan.mjs', 'backup-db.sh', 'restore-db.sh', 'build-rpk.sh', 'healthcheck.sh']:
+        for name in ['migrate.mjs', 'migration-plan.mjs', 'backup-db.sh', 'restore-db.sh', 'build-rpk.sh', 'healthcheck.sh', 'bootstrap-admin.mjs', 'activate-membership-credits.mjs']:
             add(ROOT / 'scripts' / name, 'scripts/' + name)
         for name in ['package.json', 'package-lock.json']:
             add(ROOT / 'deploy' / name, name)

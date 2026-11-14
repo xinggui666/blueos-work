@@ -1,3 +1,4 @@
+import { LegacyDraftRecovery } from "./legacy-draft-recovery";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Copy, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -110,6 +111,7 @@ export function HomeView() {
           }}
         />
       </header>
+      {hydrated ? <LegacyDraftRecovery /> : null}
 
       <section className="mt-6 rounded-xl border border-line bg-surface px-4 py-4">
         <h1 className="text-xl font-semibold tracking-tight">编辑免费，打包另计</h1>

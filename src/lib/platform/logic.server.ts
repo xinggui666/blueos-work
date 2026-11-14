@@ -559,21 +559,15 @@ async function giveMembership(sql: Sql, userId: string, plan: Row, source: strin
   // Serialize grants for one account; include queued future segments when appending.
   const locked = await sql.query("select user_id from profiles where user_id = $1 for update", [userId]);
   if (!locked.length) throw notFound("请先建立用户平台资料，再发放会员");
-  const tail = await one<{ ends_at: unknown }>(sql, "select max(ends_at) as ends_at from memberships where user_id = $1 and revoked_at is null and ends_at > now()", [userId]);
-  const start = tail?.ends_at ? stamp(tail.ends_at) : Date.now();
+  const tail = await one<{ ends_at: unknown; starts_now: unknown }>(sql, "select max(ends_at) as ends_at, now() as starts_now from memberships where user_id = $1 and revoked_at is null and ends_at > now()", [userId]);
+  const start = tail?.ends_at ? stamp(tail.ends_at) : stamp(tail!.starts_now);
   const ends = new Date(start + Number(plan.duration_days) * 86_400_000);
   const snapshot = planCard(plan);
   await sql.query(
-    "insert into memberships (id, user_id, plan_id, snapshot, starts_at, ends_at, source) values ($1,$2,$3,$4::jsonb,$5,$6,$7)",
+    "insert into memberships (id, user_id, plan_id, snapshot, starts_at, ends_at, source, credits_state) values ($1,$2,$3,$4::jsonb,$5,$6,$7,'pending')",
     [id("m"), userId, plan.id, JSON.stringify(snapshot), new Date(start).toISOString(), ends.toISOString(), source],
   );
-  await grantQuota(sql, userId, "generation", Number(plan.generation), "grant", source, `套餐 ${String(plan.name)} 生成额度`);
-  await grantQuota(sql, userId, "export", Number(plan.export_quota), "grant", source, `套餐 ${String(plan.name)} 导出额度`);
-  const pack =
-    Math.max(0, Number(plan.build_quota) || 0) +
-    Math.max(0, Number(plan.monthly_build) || 0) +
-    Math.max(0, Number(plan.bonus_build) || 0);
-  if (pack > 0) await grantQuota(sql, userId, "build", pack, "grant", source, `套餐 ${String(plan.name)} 打包额度`);
+  await sql.query("select activate_membership_credits($1)", [userId]);
 }
 
 function publicJob(row: Row) {
@@ -744,6 +738,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
   const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   if (body.expectedUserId !== undefined && body.expectedUserId !== userId) throw new ApiError(409, "账号已切换，请重新加载工作空间");
   const actor = await ensureActor(sql, userId);
+  await sql.query("select activate_membership_credits($1)", [userId]);
   if (!action.startsWith("admin") && !isSharedAction(action)) throw new Error("这个接口没有对客户端开放");
 
   // 维护模式（17.9）：普通用户只能读，不能写；管理员不受限制，方便处理问题。
@@ -1358,12 +1353,12 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       const source = `order:${orderId}`;
       // 只结束这笔订单开通的会员段；其他订单、卡密、后台发放的会员不受影响。
       await tx.query(
-        "update memberships set revoked_at = now(), ends_at = greatest(least(ends_at, now()), starts_at) where user_id = $1 and source = $2",
+        "update memberships set revoked_at = now(), credits_state = case when credits_state = 'pending' then 'revoked' else credits_state end, ends_at = greatest(least(ends_at, now()), starts_at) where user_id = $1 and source = $2",
         [target, source],
       );
       // 按这笔订单实际发放的流水扣回；余额不够时扣到可用余额为止，并记录差额。
       const granted = await tx.query<{ kind: QuotaKind; amount: number }>(
-        "select kind, sum(delta)::int as amount from quota_ledger where user_id = $1 and ref = $2 and phase = 'grant' group by kind",
+        "select kind, sum(delta)::int as amount from quota_ledger where user_id = $1 and ref = $2 and phase = 'grant' group by kind order by kind",
         [target, source],
       );
       const missing: Record<string, number> = {};

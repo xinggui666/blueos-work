@@ -4,7 +4,10 @@
   "sideEffects": false,
   "type": "module",
   "overrides": {
-    "nf3": "0.3.17"
+    "nf3": "0.3.17",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
   },
   "scripts": {
     "dev": "node scripts/with-app-env.mjs vite dev",
@@ -69,7 +72,7 @@
     "@tanstack/react-table": "^8.21.0",
     "@tanstack/router-plugin": "^1.168.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "better-auth": "~1.6.30",
+    "better-auth": "1.7.23",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -93,7 +96,7 @@
     "typescript": "^5.7.0",
     "vaul": "^1.1.2",
     "vite": "^8.2.0",
-    "zod": "^4.4.0",
+    "zod": "4.6.6",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -110,6 +113,6 @@
     "globals": "^15.15.0",
     "playwright": "^1.62.0",
     "prettier": "^3.4.0",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "8.72.2"
   }
 }

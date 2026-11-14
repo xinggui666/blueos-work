@@ -19,6 +19,16 @@ def signingValue = { String envKey, String propKey ->
 }
 def releaseStoreFile = signingValue("BLUEOS_KEYSTORE_FILE", "storeFile")
 def hasReleaseSigning = releaseStoreFile != null && file(releaseStoreFile).exists()
+// Optional legacy debug signer remains outside source; without it AGP uses ~/.android/debug.keystore.
+def debugStoreFile = System.getenv("BLUEOS_DEBUG_KEYSTORE_FILE")
+def hasExternalDebug = debugStoreFile != null && !debugStoreFile.isEmpty()
+if (hasExternalDebug) {
+    def debugKey = file(debugStoreFile).canonicalFile
+    def checkout = rootProject.projectDir.parentFile.canonicalPath + File.separator
+    if (!debugKey.exists() || debugKey.canonicalPath.startsWith(checkout)) {
+        throw new GradleException("BLUEOS_DEBUG_KEYSTORE_FILE must be an existing file outside the checkout; no silent signer fallback")
+    }
+}
 
 android {
     namespace "icu.liuhua.workshop"
@@ -42,12 +52,14 @@ android {
     }
 
     signingConfigs {
-        // 仅用于调试安装测试。这个证书和密码是公开的，不能用于发布。
-        debugInstall {
-            storeFile file("../debug.keystore")
-            storePassword "android"
-            keyAlias "workshop"
-            keyPassword "android"
+        // Legacy public debug signer only; never a Release fallback.
+        if (hasExternalDebug) {
+            debugInstall {
+                storeFile file(debugStoreFile)
+                storePassword "android"
+                keyAlias "workshop"
+                keyPassword "android"
+            }
         }
         if (hasReleaseSigning) {
             release {
@@ -61,7 +73,9 @@ android {
 
     buildTypes {
         debug {
-            signingConfig signingConfigs.debugInstall
+            if (hasExternalDebug) {
+                signingConfig signingConfigs.debugInstall
+            }
             applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
             // 调试包允许连本机/局域网的 http 服务器
