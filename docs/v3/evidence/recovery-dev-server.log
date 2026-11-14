@@ -1,0 +1,42 @@
+
+> dev
+> node scripts/with-app-env.mjs vite dev --host 127.0.0.1 --port 4016
+
+
+  VITE v8.3.4  ready in 1041 ms
+
+  ➜  Local:   http://127.0.0.1:4016/
+8:06:09 PM [vite] (ssr) connected.
+8:06:40 PM [vite] (client) dependencies optimized: @better-auth/core, @better-auth/core/api, @better-auth/core/context, @better-auth/core/db, @better-auth/core/db/adapter, @better-auth/core/env, @better-auth/core/error, @better-auth/core/instrumentation, @better-auth/core/oauth2, @better-auth/core/social-providers, @better-auth/core/utils/db, @better-auth/core/utils/deprecate, @better-auth/core/utils/error-codes, @better-auth/core/utils/fetch-metadata, @better-auth/core/utils/host, @better-auth/core/utils/id, @better-auth/core/utils/ip, @better-auth/core/utils/is-api-error, @better-auth/core/utils/json, @better-auth/core/utils/string, @better-auth/core/utils/url, @better-auth/kysely-adapter, @better-auth/telemetry, @better-auth/utils, @better-auth/utils/base64, @better-auth/utils/binary, @better-auth/utils/hash, @better-auth/utils/hmac, @better-auth/utils/otp, @better-auth/utils/password, @better-auth/utils/random, @better-fetch/fetch, @noble/ciphers/chacha.js, @noble/ciphers/utils.js, @noble/hashes/hkdf.js, @noble/hashes/sha2.js, @noble/hashes/sha3.js, @noble/hashes/utils.js, @tanstack/history, @tanstack/router-core, @tanstack/router-core/isServer, @tanstack/router-core/ssr/client, @tanstack/router-core/ssr/server, better-call, defu, h3-v2, jose/errors, nanostores, seroval
+8:06:40 PM [vite] (client) optimized dependencies changed. reloading
+8:06:40 PM [vite] (client) [Unhandled error] TypeError: Failed to fetch dynamically imported module: http://localhost:4016/node_modules/@tanstack/react-start/dist/plugin/default-entry/client.tsx
+
+AbortError: This operation was aborted
+    at new DOMException (node:internal/per_context/domexception:76:18)
+    ... 8 lines matching cause stack trace ...
+    at TCP.<anonymous> (node:net:362:12) {
+  cause: DOMException [AbortError]: This operation was aborted
+      at new DOMException (node:internal/per_context/domexception:76:18)
+      at AbortController.abort (node:internal/abort_controller:579:18)
+      at abort (file:///workspace/blueos-work/node_modules/srvx/dist/adapters/node.mjs:316:51)
+      at ServerResponse.<anonymous> (file:///workspace/blueos-work/node_modules/srvx/dist/adapters/node.mjs:320:35)
+      at ServerResponse.wrapper (node:events:639:12)
+      at ServerResponse.emit (node:events:514:28)
+      at emitCloseNT (node:_http_server:1156:10)
+      at Socket.onServerResponseClose (node:_http_server:292:5)
+      at Socket.emit (node:events:526:24)
+      at TCP.<anonymous> (node:net:362:12),
+  status: 500,
+  statusText: undefined,
+  headers: undefined,
+  data: undefined,
+  body: undefined,
+  unhandled: true
+}
+8:07:28 PM [vite] (client) hmr update /src/styles.css?direct
+8:08:08 PM [vite] (client) hmr update /src/styles.css?direct
+8:08:09 PM [vite] (client) hmr update /src/styles.css?direct
+8:09:12 PM [vite] (client) hmr update /src/styles.css?direct
+8:09:44 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:09:44 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:11:45 PM [vite] (client) hmr update /src/styles.css?direct

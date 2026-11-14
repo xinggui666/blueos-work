@@ -36,3 +36,6 @@ backups/
 
 __pycache__/
 *.pyc
+
+# Auditable V3 regression evidence (fixture-only; never credentials)
+!/docs/v3/evidence/*.log

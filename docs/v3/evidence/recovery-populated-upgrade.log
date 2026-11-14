@@ -1,0 +1,6 @@
+Prepared nonempty 0001..0007 fixture: legacy membership with preserved custom fields and order
+[migrate] applied 0008_v3_entitlement_safety.sql
+[migrate] done — 1 migration(s) applied.
+PASS populated upgrade preserves every existing snapshot field and business row count; only absent historical fields backfilled
+PASS repeat migration is up to date
+PASS exact start inclusive / end exclusive / future / revoked policy boundaries under a transaction-frozen database clock

@@ -1,0 +1,4 @@
+[migrate] up to date.
+PASS populated upgrade preserves every existing snapshot field and business row count; only absent historical fields backfilled
+PASS repeat migration is up to date
+PASS exact start inclusive / end exclusive / future / revoked policy boundaries under a transaction-frozen database clock

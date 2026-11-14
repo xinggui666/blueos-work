@@ -1,0 +1,54 @@
+PASS A caches an offline draft in real browser store
+PASS switch shared cookies to B: old A background writes cannot upload into B
+PASS B cannot see A cache after reload, including offline edits
+PASS tab close/restart and return to A restores A, never B
+PASS offline deletion remains deleted after restart/reconnect
+PASS same userId on distinct server origins uses independent browser storage keys
+PASS both billable browser delivery gates reject conflict receipt
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'Failed to fetch dynamically imported module: http://localhost:4016/node_modules/@tanstack/react-start/dist/plugin/default-entry/client.tsx'
++ ]
+- []
+
+    at file:///workspace/blueos-work/scripts/e2e/v3-workspace.mjs:166:10
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:541:9) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [Array],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+{
+  scope: null,
+  cache: [
+    {
+      key: 'bw-workspace-v3:http%3A%2F%2Flocalhost%3A4016:zTBMH7TzdvleKzffH9fQbPdNaP1jAI38:blueos-studio-v1',
+      bytes: 833
+    },
+    {
+      key: 'bw-workspace-v3:http%3A%2F%2Flocalhost%3A4016:xxfeRJl11zAVIF8nzYVkrDA8j1YLF6Hd:blueos-studio-v1',
+      bytes: 37
+    },
+    {
+      key: 'bw-workspace-v3:http%3A%2F%2Flocalhost%3A4016:xxfeRJl11zAVIF8nzYVkrDA8j1YLF6Hd:blueos-deleted-projects-v3',
+      bytes: 2
+    },
+    {
+      key: 'bw-workspace-v3:http%3A%2F%2Flocalhost%3A4016:xxfeRJl11zAVIF8nzYVkrDA8j1YLF6Hd:blueos-sync-state-v2',
+      bytes: 2
+    },
+    {
+      key: 'bw-workspace-v3:https%3A%2F%2Fserver-two.invalid:same-id:probe',
+      bytes: 10
+    },
+    {
+      key: 'bw-workspace-v3:https%3A%2F%2Fserver-one.invalid:same-id:probe',
+      bytes: 10
+    }
+  ]
+}
