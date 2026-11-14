@@ -18,7 +18,8 @@
     APP_CHUNK:
       "内置编辑器资源未能加载。请保留数据重试；仍失败请报告诊断码并核对安装包和系统 WebView。",
     ENTRY_LOAD: "启动脚本未能加载。请保留数据重新载入，不要清除应用数据。",
-    STARTUP: "编辑器启动遇到错误。没有自动清除草稿或会话，请保留数据重试。",
+    STARTUP:
+      "编辑器启动遇到错误。未清除草稿或会话，请保留数据重试；仍失败请更新系统 WebView/Chrome 并报告诊断码。",
     SESSION: "原生会话数据格式异常。为避免串用账号，已停止加载；未删除任何草稿或登录信息。",
     UNSUPPORTED:
       "系统 WebView 缺少必需能力（structuredClone）。请更新系统 WebView/Chrome；本机草稿没有清除。",
@@ -78,7 +79,7 @@
       if (target instanceof HTMLScriptElement) fail("ENTRY_LOAD");
       else if (target === window) fail("STARTUP");
     },
-    true,
+    true
   );
   window.addEventListener("unhandledrejection", function () {
     if (!ready) fail("STARTUP");
@@ -87,7 +88,7 @@
     event.preventDefault();
     if (
       !window.confirm(
-        "将保留本机已保存草稿与登录信息重新加载。尚未保存的界面状态可能丢失，原生文件或安装操作可能仍在进行。确认重试？",
+        "将保留本机已保存草稿与登录信息重新加载。尚未保存的界面状态可能丢失，原生文件或安装操作可能仍在进行。确认重试？"
       )
     )
       return;

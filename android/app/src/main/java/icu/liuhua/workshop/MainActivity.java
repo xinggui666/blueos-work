@@ -24,6 +24,8 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -101,12 +103,19 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void destroyWebView(WebView view) {
+        ViewParent parent = view.getParent();
+        if (parent instanceof ViewGroup) ((ViewGroup) parent).removeView(view);
+        view.destroy();
+        if (web == view) web = null;
+    }
+
     private void showRecovery(String code) {
         if (isFinishing() || isDestroyed() || (recoveryDialog != null && recoveryDialog.isShowing())) return;
         recoveryDialog = new AlertDialog.Builder(this).setTitle("工坊界面加载失败")
             .setMessage(code + "\n本机已保存草稿和登录信息未清除。请保留数据重试；不要清除应用数据。")
             .setPositiveButton("保留数据重试", (dialog, which) -> reloadBundledApp())
-            .setNegativeButton("稍后", null).show();
+            .setNegativeButton("退出（保留数据）", (dialog, which) -> finish()).setCancelable(false).show();
     }
 
     @Override
@@ -127,9 +136,9 @@ public class MainActivity extends Activity {
             unregisterReceiver(installStatus);
         } catch (Exception ignored) {
         }
-        if (networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);
+        try { if (networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback); } catch (Exception alreadyUnregistered) { /* Lifecycle cleanup must continue. */ }
         if (recoveryDialog != null) recoveryDialog.dismiss();
-        if (web != null) { web.destroy(); web = null; }
+        if (web != null) destroyWebView(web);
         if (bridge != null) bridge.close();
         super.onDestroy();
     }
@@ -256,8 +265,7 @@ public class MainActivity extends Activity {
         public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
             // A dead renderer cannot be reloaded. Destroy it and recreate the Activity on explicit retry.
             if (bridge != null) bridge.cancelPendingLogin();
-            view.destroy();
-            web = null;
+            destroyWebView(view);
             showRecovery("BW_BOOT_V1_RENDERER_GONE");
             return true;
         }
