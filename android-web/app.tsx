@@ -96,7 +96,7 @@ function UpdateGate({ children }: { children: ReactNode }) {
       live = false;
     };
   }, [isOnline]);
-  if (check?.force && check.release) {
+  if (check?.force && check.update && check.release && check.release.versionCode > appInfo().versionCode && !hidden) {
     return (
       <main className="grid min-h-dvh place-items-center px-6">
         <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5">
@@ -105,6 +105,8 @@ function UpdateGate({ children }: { children: ReactNode }) {
             当前版本 {appInfo().versionName} 已停止支持，请更新到 {check.release.versionName}。{check.release.notes}
           </p>
           <UpdateButton release={check.release} />
+          <button type="button" className="mt-4 min-h-11 text-sm text-accent" onClick={() => { setHidden(true); }}>更新失败或暂时无法安装：返回本机工作空间</button>
+          <p className="mt-2 text-xs text-muted">继续使用不绕过服务器权限。请稍后在设置中重试更新。</p>
         </div>
       </main>
     );

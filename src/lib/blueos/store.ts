@@ -1,11 +1,9 @@
-import { useEffect } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
   makeFromTemplate,
   makeNode,
   makePage,
-  makeSample,
   normalizeProject,
   restoreSnapshot,
   snapshotOf,
@@ -20,6 +18,7 @@ import {
   type TemplateId,
 } from "./model";
 import { toNative, logicOf, type LogicDoc, type EditorProject } from "../protocol/editor";
+import { activateWorkspace, rememberDeletion, scopedStorage, workspace, type Workspace } from "../platform/workspace";
 import { PROTOCOL_LIMITS } from "../protocol/schema";
 
 /** 工程统一以原生协议模式保存在本地（旧数据打开时转换一次）。 */
@@ -145,7 +144,10 @@ export const useStudio = create<Studio>()(
         set({ projects: [copy, ...get().projects] });
         return copy.id;
       },
-      removeProject: (id) => set({ projects: get().projects.filter((project) => project.id !== id) }),
+      removeProject: (id) => {
+        rememberDeletion(localStorage, id); // Persist before removing the draft; survives offline/restart.
+        set({ projects: get().projects.filter((project) => project.id !== id) });
+      },
       updateMeta: (id, patch) => {
         const current = get().projects.find((project) => project.id === id);
         if (!current) return;
@@ -616,12 +618,8 @@ export const useStudio = create<Studio>()(
     {
       name: "blueos-studio-v1",
       partialize: (state) => ({ projects: state.projects }),
-      onRehydrateStorage: () => (state) => {
-        const projects = state?.projects?.length ? state.projects : [makeSample()];
-        queueMicrotask(() => {
-          useStudio.getState().setHydrated(projects);
-        });
-      },
+      skipHydration: true,
+      storage: createJSONStorage(() => scopedStorage(localStorage)),
     },
   ),
 );
@@ -637,16 +635,28 @@ function reId<T extends { id: string }>(list: T[]): T[] {
   });
 }
 
+/** Switch before paint. No unowned legacy cache is silently assigned to a login. */
+export function setStudioIdentity(origin: string, userId: string | null): Workspace | null {
+  const previous = workspace();
+  if (previous?.origin === new URL(origin).origin && previous.userId === userId && useStudio.getState().hydrated) return previous;
+  activateWorkspace(origin, null);
+  useStudio.setState({ projects: [], past: {}, future: {}, hydrated: false });
+  const scope = activateWorkspace(origin, userId);
+  // Stop writes while clearing all transient history from the previous account.
+  const storage = scopedStorage(localStorage);
+  let projects: Project[] = [];
+  if (scope) {
+    const raw = storage.getItem("blueos-studio-v1");
+    if (raw) {
+      const parsed = JSON.parse(raw) as { state?: { projects?: Project[] } };
+      if (!Array.isArray(parsed.state?.projects)) throw new Error("本机工程缓存损坏，原始数据已保留，请先恢复备份");
+      projects = parsed.state.projects.map(native);
+    }
+  }
+  useStudio.setState({ projects, past: {}, future: {}, hydrated: !!scope });
+  return scope;
+}
+
 export function useStudioHydrated() {
-  const hydrated = useStudio((state) => state.hydrated);
-  useEffect(() => {
-    const finish = () => {
-      if (useStudio.getState().hydrated) return;
-      const projects = useStudio.getState().projects;
-      useStudio.getState().setHydrated(projects.length ? projects : [makeSample()]);
-    };
-    if (useStudio.persist.hasHydrated()) finish();
-    return useStudio.persist.onFinishHydration(finish);
-  }, []);
-  return hydrated;
+  return useStudio((state) => state.hydrated);
 }

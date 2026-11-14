@@ -1,3 +1,4 @@
+import { checkDeliveryRevision } from "./delivery.server";
 import { createHash, randomBytes } from "node:crypto";
 import { getSql, withTransaction, type Sql } from "@/lib/db";
 import { ApiError, forbidden, notFound } from "./errors";
@@ -136,20 +137,19 @@ async function ensureActor(sql: Sql, userId: string): Promise<Actor> {
     );
     created = inserted.length > 0;
   }
-  // 首个超级管理员：设置了 BOOTSTRAP_ADMIN_EMAIL 时只允许该邮箱获得，避免生产首次部署被抢注；
-  // 未设置时保持原行为（第一个账号成为超级管理员），方便本地试用。
+  // No public "first arrival wins" mode. Serialize the explicit bootstrap identity.
   const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
-  const mayBootstrap = !bootstrapEmail || (user.email || "").toLowerCase() === bootstrapEmail;
-  const promoted = mayBootstrap
-    ? await sql.query(
-        `insert into user_roles (user_id, role)
-         select $1, 'super_admin'
-         where not exists (select 1 from user_roles where role = 'super_admin')
-         returning user_id`,
-        [userId],
-      )
-    : [];
-  if (promoted.length) await audit(sql, userId, "bootstrap.super_admin", userId, null, { role: "super_admin" });
+  const bootstrapUserId = process.env.BOOTSTRAP_ADMIN_USER_ID?.trim();
+  // Email registration is not verified. Email alone must never grant an admin role.
+  if (existing?.status !== "banned" && bootstrapUserId === userId && bootstrapEmail && (user.email || "").toLowerCase() === bootstrapEmail) {
+    await withTransaction(async (tx) => {
+      await tx.query("select pg_advisory_xact_lock(41920301)");
+      const promoted = await tx.query(
+        `insert into user_roles (user_id, role) select $1, 'super_admin'
+         where not exists (select 1 from user_roles where role = 'super_admin') returning user_id`, [userId]);
+      if (promoted.length) await audit(tx, userId, "bootstrap.super_admin", userId, null, { role: "super_admin" });
+    });
+  }
   if (created) {
     for (const kind of QUOTA_KINDS) {
       const amount = STARTER_QUOTA[kind];
@@ -184,9 +184,9 @@ function requirePerm(actor: Actor, perm: string) {
 }
 
 async function activeMembership(sql: Sql, userId: string) {
-  return one<{ id: string; plan_id: string; ends_at: unknown; snapshot: unknown }>(
+  return one<{ id: string; plan_id: string; ends_at: unknown; snapshot: unknown; entitlement_project_limit: number; entitlement_concurrency: number; entitlement_priority: number }>(
     sql,
-    "select id, plan_id, ends_at, snapshot from memberships where user_id = $1 and ends_at > now() order by ends_at desc limit 1",
+    "select * from current_membership_entitlements where user_id = $1",
     [userId],
   );
 }
@@ -270,8 +270,7 @@ function cleanProject(input: unknown): Project {
 async function projectCap(sql: Sql, userId: string): Promise<number> {
   const member = await activeMembership(sql, userId);
   if (!member) return FREE_PROJECT_LIMIT;
-  const plan = await one<{ project_limit: number }>(sql, "select project_limit from plans where id = $1", [member.plan_id]);
-  const limit = Number(plan?.project_limit ?? 20);
+  const limit = Number(member.entitlement_project_limit);
   if (!Number.isFinite(limit) || limit <= 0) return 1_000_000;
   return limit;
 }
@@ -321,8 +320,7 @@ async function listProjects(sql: Sql, userId: string): Promise<Project[]> {
 async function concurrencyLimit(sql: Sql, userId: string): Promise<number> {
   const member = await activeMembership(sql, userId);
   if (!member) return 1;
-  const plan = await one<{ concurrency: number }>(sql, "select concurrency from plans where id = $1", [member.plan_id]);
-  return Math.max(1, Number(plan?.concurrency ?? 1));
+  return Number(member.entitlement_concurrency);
 }
 
 /**
@@ -339,7 +337,8 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
   if (!projectId) throw new ApiError(400, "缺少工程编号");
   const owned = await one<Row>(sql, "select id from projects where id = $1 and user_id = $2", [projectId, userId]);
   if (!owned) throw notFound("请先保存到云端，再下载工程包");
-  const { doc, contentSha256: digest } = await loadOwnedDoc(sql, userId, projectId);
+  const { doc, revision, contentSha256: digest } = await loadOwnedDoc(sql, userId, projectId);
+  checkDeliveryRevision(input, revision, digest);
 
   const palette = await paletteFor(sql, userId, actor.roles);
   const blocked = new Set<string>();
@@ -557,25 +556,13 @@ async function applyKey(sql: Sql, userId: string, type: string, payload: Record<
 }
 
 async function giveMembership(sql: Sql, userId: string, plan: Row, source: string) {
-  const current = await activeMembership(sql, userId);
-  const start = current ? stamp(current.ends_at) : Date.now();
+  // Serialize grants for one account; include queued future segments when appending.
+  const locked = await sql.query("select user_id from profiles where user_id = $1 for update", [userId]);
+  if (!locked.length) throw notFound("请先建立用户平台资料，再发放会员");
+  const tail = await one<{ ends_at: unknown }>(sql, "select max(ends_at) as ends_at from memberships where user_id = $1 and revoked_at is null and ends_at > now()", [userId]);
+  const start = tail?.ends_at ? stamp(tail.ends_at) : Date.now();
   const ends = new Date(start + Number(plan.duration_days) * 86_400_000);
-  const snapshot = {
-    id: plan.id,
-    name: plan.name,
-    slug: plan.slug,
-    priceCents: plan.price_cents,
-    durationDays: plan.duration_days,
-    generation: plan.generation,
-    build: plan.build_quota,
-    export: plan.export_quota,
-    concurrency: plan.concurrency,
-    projectLimit: Number(plan.project_limit ?? 20),
-    monthlyBuild: Number(plan.monthly_build ?? 0),
-    bonusBuild: Number(plan.bonus_build ?? 0),
-    // 套餐的组件权限：会员可用的组件分类（空 = 全部会员组件）。快照保存，改套餐不影响已开通的会员。
-    categories: String(plan.categories ?? ""),
-  };
+  const snapshot = planCard(plan);
   await sql.query(
     "insert into memberships (id, user_id, plan_id, snapshot, starts_at, ends_at, source) values ($1,$2,$3,$4::jsonb,$5,$6,$7)",
     [id("m"), userId, plan.id, JSON.stringify(snapshot), new Date(start).toISOString(), ends.toISOString(), source],
@@ -754,8 +741,9 @@ async function importBundle(sql: Sql, userId: string, body: Record<string, unkno
 
 export async function dispatch(userId: string, action: string, payload: unknown, client: ClientKind = "web"): Promise<unknown> {
   const sql = await getSql();
-  const actor = await ensureActor(sql, userId);
   const body = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+  if (body.expectedUserId !== undefined && body.expectedUserId !== userId) throw new ApiError(409, "账号已切换，请重新加载工作空间");
+  const actor = await ensureActor(sql, userId);
   if (!action.startsWith("admin") && !isSharedAction(action)) throw new Error("这个接口没有对客户端开放");
 
   // 维护模式（17.9）：普通用户只能读，不能写；管理员不受限制，方便处理问题。
@@ -866,8 +854,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       priority: async () => {
         const member = await activeMembership(sql, userId);
         if (!member) return 0;
-        const plan = await one<{ priority: number }>(sql, "select priority from plans where id = $1", [member.plan_id]);
-        return Number(plan?.priority ?? 0);
+        return Number(member.entitlement_priority);
       },
     });
   }
@@ -882,7 +869,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const minimum = Number(release.min_version_code);
     return {
       update: versionCode > 0 && latest > versionCode,
-      force: versionCode > 0 && (Boolean(release.force_update) || versionCode < minimum),
+      force: versionCode > 0 && latest > versionCode && minimum <= latest && (Boolean(release.force_update) || versionCode < minimum),
       release: releaseCard(release),
       flags,
     };
@@ -1344,8 +1331,11 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       );
       if (!order) throw new ApiError(409, "订单不在待确认状态");
       if (decision === "confirm") {
-        const plan = await one<Row>(tx, "select * from plans where id = $1", [order.plan_id]);
-        if (!plan) throw notFound("套餐已不存在");
+        const snapshot = asJson(order.snapshot) as Record<string, unknown>;
+        if (!snapshot || typeof snapshot !== "object" || snapshot.id !== order.plan_id || !Number.isFinite(snapshot.durationDays) || Number(snapshot.durationDays) <= 0) throw new ApiError(409, "订单权益快照无效，请人工核对，未发放权益");
+        const plan: Row = { ...snapshot, price_cents: snapshot.priceCents, duration_days: snapshot.durationDays,
+          build_quota: snapshot.build, export_quota: snapshot.export, project_limit: snapshot.projectLimit,
+          storage_mb: snapshot.storageMb, daily_build: snapshot.dailyBuild, monthly_build: snapshot.monthlyBuild, bonus_build: snapshot.bonusBuild };
         await giveMembership(tx, String(order.user_id), plan, `order:${orderId}`);
       }
       await audit(tx, userId, `order.${decision}`, orderId, { status: "pending" }, { status: next });
@@ -1368,7 +1358,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
       const source = `order:${orderId}`;
       // 只结束这笔订单开通的会员段；其他订单、卡密、后台发放的会员不受影响。
       await tx.query(
-        "update memberships set ends_at = greatest(least(ends_at, now()), starts_at) where user_id = $1 and source = $2",
+        "update memberships set revoked_at = now(), ends_at = greatest(least(ends_at, now()), starts_at) where user_id = $1 and source = $2",
         [target, source],
       );
       // 按这笔订单实际发放的流水扣回；余额不够时扣到可用余额为止，并记录差额。
@@ -1475,6 +1465,7 @@ export async function dispatch(userId: string, action: string, payload: unknown,
     const versionCode = Math.max(1, Math.floor(Number(release.versionCode)));
     const minVersionCode = Math.max(1, Math.floor(Number(release.minVersionCode || 1)));
     if (!versionName) throw new Error("请填写版本名");
+    if (!Number.isSafeInteger(versionCode) || !Number.isSafeInteger(minVersionCode) || minVersionCode > versionCode) throw new ApiError(400, "最低版本不能高于发布版本，版本号必须是整数");
     const apkUrl = text(release.apkUrl, 300);
     const sha = text(release.sha256, 64).toLowerCase();
     if (sha && !/^[a-f0-9]{64}$/.test(sha)) throw new Error("SHA-256 需要 64 位十六进制");

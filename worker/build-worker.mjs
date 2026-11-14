@@ -206,7 +206,7 @@ async function promote() {
     ) and (
       select count(*) from build_tasks a where a.user_id = t.user_id and a.status in ('waiting','running')
     ) < greatest(1, coalesce((
-      select max(p.concurrency) from memberships m join plans p on p.id = m.plan_id where m.user_id = t.user_id and m.ends_at > now()
+      select entitlement_concurrency from current_membership_entitlements where user_id = t.user_id
     ), 1))`);
 }
 
@@ -312,6 +312,10 @@ let stopping = false;
 process.on("SIGTERM", () => (stopping = true));
 process.on("SIGINT", () => (stopping = true));
 
+// Worker liveness must not pause while a long compiler command is awaited.
+const workerBeat = setInterval(() => { void heartbeat().catch((error) => console.error("[worker] heartbeat failed", error.message)); }, 15000);
+workerBeat.unref();
+
 console.log(`[worker] ${WORKER_ID} 启动：${TOOLKIT_VERSION}，沙箱 ${SANDBOX}，${SIGNING ? "release 签名已配置" : "无签名证书，只出 debug 包"}`);
 while (!stopping) {
   try {
@@ -333,5 +337,6 @@ while (!stopping) {
   }
   await new Promise((r) => setTimeout(r, POLL_MS));
 }
+clearInterval(workerBeat);
 await pool.query("delete from build_workers where id = $1", [WORKER_ID]).catch(() => {});
 await pool.end();

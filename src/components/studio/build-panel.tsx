@@ -1,3 +1,4 @@
+import { prepareDelivery } from "@/lib/platform/delivery";
 /**
  * 交付面板里的 RPK 构建：发起构建（先保存到云端）、任务状态、日志、产物检查、取消、下载。
  * 积分规则：发起时预扣 1 个打包积分；成功才确认扣除；失败、取消、不可用都不扣。
@@ -59,8 +60,8 @@ export function BuildPanel({ project }: { project: EditorProject }) {
     setBusy(true);
     setNote("");
     // 只构建云端已保存的修订，所以先保存当前编辑结果。
-    void call("syncProject", { project })
-      .then(() => call<BuildCard>("requestBuild", { projectId: project.id }))
+    void prepareDelivery(project, call)
+      .then((fixed) => call<BuildCard>("requestBuild", { projectId: project.id, ...fixed }))
       .then((card) => {
         setNote(card.message ?? card.statusLabel);
         refresh();

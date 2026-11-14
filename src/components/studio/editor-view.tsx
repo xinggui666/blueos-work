@@ -1,3 +1,4 @@
+import { prepareDelivery } from "@/lib/platform/delivery";
 import { Link } from "@tanstack/react-router";
 import { Bug, ChevronLeft, Download, Eye, EyeOff, Layers, Lock, LockOpen, Redo2, Shapes, SlidersHorizontal, Trash2, Undo2, Package, Workflow } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
@@ -1128,8 +1129,8 @@ function PackPanel({ project, doc, locate }: { project: Project; doc: ProjectDoc
           setBusy(true);
           setError("");
           // 服务端只打包已保存的内容，所以先保存当前编辑结果再下载。
-          void call("syncProject", { project })
-            .then(() => call<{ ok: boolean; fileName: string; zipBase64: string; reused?: boolean }>("exportBundle", { projectId: project.id }))
+          void prepareDelivery(project, call)
+            .then((fixed) => call<{ ok: boolean; fileName: string; zipBase64: string; reused?: boolean }>("exportBundle", { projectId: project.id, ...fixed }))
             .then(async (file) => {
               const saved = await saveBase64(file.fileName, file.zipBase64);
               if (!saved) setNote(file.reused ? "已取消保存（内容未变，未重复扣分）" : "已取消保存，本次已计入下载额度，内容不变时再次下载不重复扣分");
