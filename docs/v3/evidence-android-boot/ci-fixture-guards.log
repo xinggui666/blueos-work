@@ -1,0 +1,12 @@
+✔ CI fixture refuses missing explicit opt-in before registration/bootstrap (43.597862ms)
+✔ CI fixture refuses production-like database name before registration/bootstrap (39.066748ms)
+✔ CI fixture refuses remote database host before registration/bootstrap (39.568525ms)
+✔ CI fixture refuses remote HTTP target before registration/bootstrap (34.757924ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 219.497272

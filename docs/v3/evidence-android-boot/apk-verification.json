@@ -1,0 +1,24 @@
+{
+  "release": {
+    "packageName": "icu.liuhua.workshop",
+    "versionCode": 11,
+    "versionName": "1.0.1",
+    "sha256": "00dbe4d713ff72fd766c8e546227aefb26524032d4861809662665f2a96e2e16",
+    "bytes": 232305,
+    "runtimeTested": false,
+    "exactBundledAssetsVerified": 5
+  },
+  "debug": {
+    "packageName": "icu.liuhua.workshop.debug",
+    "versionCode": 11,
+    "versionName": "1.0.1-debug",
+    "sha256": "aaca1c785814a64cba935391be63fca44f4c54c30a1c290da2b4d14055aa595e",
+    "bytes": 299391,
+    "runtimeTested": false,
+    "exactBundledAssetsVerified": 5
+  },
+  "releaseSignerSha256": "0f885077fb73915c0256b283d90eac28d2e0a08e27d374ba1ae956f615620482",
+  "originalSignerPreserved": true,
+  "jvmTests": 16,
+  "jvmFailures": 0
+}

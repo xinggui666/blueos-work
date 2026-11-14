@@ -1,0 +1,10 @@
+{
+  "oldApkSha256": "08d8ce6a6839a62cf55ab5d1c413ba785ed7d8f377bbd41958b2d85667f703b5",
+  "oldApkPublicSignerSha256": "0f885077fb73915c0256b283d90eac28d2e0a08e27d374ba1ae956f615620482",
+  "existingExternalReleaseSignerSha256": "0f885077fb73915c0256b283d90eac28d2e0a08e27d374ba1ae956f615620482",
+  "matches": true,
+  "keyReplaced": false,
+  "jvmTests": 10,
+  "jvmFailures": 0,
+  "runtimeTested": false
+}

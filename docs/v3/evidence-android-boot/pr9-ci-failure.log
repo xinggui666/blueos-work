@@ -1,0 +1,96 @@
+test	API smoke test against PostgreSQL	﻿2026-11-14T12:46:56.2790039Z ##[group]Run node .output/server/index.mjs > server.log 2>&1 &
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2790523Z ^[[36;1mnode .output/server/index.mjs > server.log 2>&1 &^[[0m
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2791040Z ^[[36;1mfor i in $(seq 1 30); do curl -sf http://127.0.0.1:8090/api/health && break; sleep 1; done^[[0m
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2791644Z ^[[36;1mAPI_BASE=http://127.0.0.1:8090 API_ORIGIN=http://localhost:8090 npm run test:api^[[0m
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2840762Z shell: /usr/bin/bash -e {0}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2841014Z env:
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2841431Z   DATABASE_URL: ***127.0.0.1:5432/blueos
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2841825Z   BETTER_AUTH_SECRET: [REDACTED_CI_FIXTURE]
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2842237Z   BETTER_AUTH_URL: http://localhost:8090
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2842510Z   PORT: 8090
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2842697Z   HOST: 127.0.0.1
+test	API smoke test against PostgreSQL	2026-11-14T12:46:56.2842890Z ##[endgroup]
+test	API smoke test against PostgreSQL	2026-11-14T12:46:57.5623948Z {"ok":true,"service":"blueos-workshop","db":"neon","dbMs":23}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:57.5624410Z > test:api
+test	API smoke test against PostgreSQL	2026-11-14T12:46:57.5624751Z > node scripts/api-smoke.mjs
+test	API smoke test against PostgreSQL	2026-11-14T12:46:57.5624938Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.2796338Z ✔ 无效 token 返回 401
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3032842Z ✖ 管理员可以看总览
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3033283Z    {"error":"没有权限"}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3033448Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3033541Z 403 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3033688Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3383861Z ✔ 新账号三种积分为 0、无角色
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3476188Z ✔ 普通用户调后台接口返回 403
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3538944Z ✔ 未知操作返回 400
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3581573Z ✔ 非法 JSON 返回 400
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.3691807Z ✔ 超大请求体返回 413
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4031761Z ✔ 保存工程，别人不能覆盖
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4319298Z ✔ 免费用户最多 3 个工程
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4656972Z ✔ 0 积分不能下载 .bproj；构建未开放时 RPK 申请记为不可用且不扣分
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4717087Z ✖ 管理员生成积分卡密
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4717428Z    {"error":"没有权限"}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4717796Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4717910Z 403 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4718035Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4916297Z ✖ 卡密并发兑换只成功一次
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4916793Z    400,400,400
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4917035Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4917193Z 0 !== 1
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.4917507Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5533111Z ✖ 同一工程重复下载 .bproj 只扣一次
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5533609Z    {"error":"项目工程下载积分不足，请先获取工程下载积分"}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5533805Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5533900Z 400 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5534022Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5700406Z ✖ .bproj 用服务端保存的内容，不信任客户端提交
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5701239Z    {"error":"项目工程下载积分不足，请先获取工程下载积分"}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5701627Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5701859Z 400 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5702105Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.5934896Z ✔ 保存了未授权组件的工程不能导出
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6274747Z ✔ RPK 申请返回 unavailable 且不扣分
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6345902Z ✖ 流水记录 reserve/commit
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6346231Z    
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6607730Z ✖ 并发重复下载同一工程只扣一次
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6608230Z    {"error":"没有权限"}
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6608385Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6608474Z 403 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.6608599Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8752687Z ✖ 订单：并发确认只开通一次，撤销只扣回本订单
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8753126Z    Expected values to be strictly deep-equal:
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8753473Z + actual - expected
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8753671Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8753753Z   [
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8753935Z +   403,
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8754116Z +   403
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8754286Z -   200,
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8754457Z -   409
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8754623Z   ]
+test	API smoke test against PostgreSQL	2026-11-14T12:46:58.8754727Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0826137Z ✖ 封禁立即吊销会话，解封后可重新登录
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0826937Z    Expected values to be strictly equal:
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0828150Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0828724Z 403 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0828946Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0974211Z ✖ 管理员不能封禁自己
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0974984Z    Expected values to be strictly equal:
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0975544Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0975744Z 403 !== 400
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.0975998Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3030012Z ✔ 旧版编辑器格式保存后，以协议 v2 读取（修订 1）
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3236243Z ✔ 内容不变不产生新修订；内容变化修订 +1
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3374773Z ✔ 基于旧修订保存不同内容 → 409，返回云端版本，不覆盖
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3578893Z ✔ 网页编辑器格式往返保留协议扩展内容（条件事件）
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3708948Z ✔ 网页旧修订保存 → 返回冲突和云端工程，不覆盖
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3919296Z ✔ 可以读取历史修订和修订列表
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.3980213Z ✔ 结构错误的协议文档保存返回 400
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4033586Z ✔ validateProject 报告语义错误
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4164352Z ✖ .bproj v2：导出 → 预览 → 导入为新工程；重复导入识别；篡改拒绝
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165037Z    Expected values to be strictly equal:
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165256Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165353Z 403 !== 200
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165468Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165475Z 
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4165776Z 19 通过，11 失败（http://127.0.0.1:8090）
+test	API smoke test against PostgreSQL	2026-11-14T12:46:59.4317120Z ##[error]Process completed with exit code 1.

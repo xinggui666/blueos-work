@@ -1,0 +1,9 @@
+PASS missing dynamic app chunk shows versioned error, cancellation preserves page, full retry recovers without deleting either user's drafts
+PASS entry script 404 stays visible independently of module execution
+PASS entry syntax/runtime failure has sanitized diagnostics without raw error details
+PASS invalid native session stops before editor import and recovers explicitly without adopting drafts
+PASS 15s watchdog does not clear data or prevent a late successful module load
+PASS even both watchdog and entry missing leave static readable recovery instead of a blank page
+PASS React route/effect failure exposes guarded recovery and preserves data
+PASS bridge calls reject versioned malformed/throwing/timeout errors and late callbacks cannot resolve the next request
+{"pass":8,"environment":"Chromium+mock native bridge, built bundled assets/source bridge","apkRuntime":false}

@@ -1,0 +1,60 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:checkWebAssets
+> Task :app:preBuild
+> Task :app:preDebugBuild
+> Task :app:generateDebugBuildConfig
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes NO-SOURCE
+
+> Task :app:signingReport
+Variant: debug
+Config: debug
+Store: /home/box/.android/debug.keystore
+Alias: AndroidDebugKey
+Error: Missing keystore
+----------
+Variant: release
+Config: release
+Store: /workspace/secrets/blueos-work/blueos-release.jks
+Alias: blueos-release
+MD5: 89:0C:D3:29:2E:74:DF:6F:93:DE:A9:73:FD:F4:59:20
+SHA1: EF:70:9B:87:9D:AA:DB:E3:00:CC:45:98:04:A5:D7:C6:4E:8A:BF:71
+SHA-256: 0F:88:50:77:FB:73:91:5C:02:56:B2:83:D9:0E:AC:28:D2:E0:A0:8E:27:D3:74:BA:1A:E9:56:F6:15:62:04:82
+Valid until: Wednesday, April 1, 2054
+----------
+Variant: debugAndroidTest
+Config: debug
+Store: /home/box/.android/debug.keystore
+Alias: AndroidDebugKey
+Error: Missing keystore
+----------
+
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:compileDebugUnitTestJavaWithJavac
+> Task :app:testDebugUnitTest
+
+BUILD SUCCESSFUL in 22s
+23 actionable tasks: 23 executed
