@@ -1,0 +1,7 @@
+PASS old unowned raw cache is never automatically adopted on reload
+PASS first ownership confirmation cancellation changes no project or source bytes
+PASS second server/account upload confirmation cancellation still changes nothing
+PASS two explicit confirmations recover a new copy and actual cloud upload without deleting old data
+PASS owner-tagged legacy account data is neither previewed nor imported
+PASS corrupt JSON is preserved and cannot partially import
+6 actual browser recovery UI cases passed; not Android runtime

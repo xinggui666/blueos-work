@@ -1,0 +1,7 @@
+PASS email signup and existing-account signin retain stable user and bearer session
+PASS wrong password and unauthenticated platform access are rejected
+PASS two sessions coexist; signout revokes only the selected bearer
+PASS new social API initiates broker OAuth with S256 and current callback path, without contacting provider
+PASS popup uses migrated server social endpoint and returns authorization redirect
+PASS unknown provider and forged callback state do not create a signed-in session
+6 actual local HTTP auth compatibility cases passed; provider callback/login to real broker remains untested

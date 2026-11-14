@@ -1,0 +1,419 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@better-auth/drizzle-adapter": {
+      "name": "@better-auth/drizzle-adapter",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243465,
+          "name": "@better-auth/drizzle-adapter",
+          "dependency": "@better-auth/drizzle-adapter",
+          "title": "@better-auth/drizzle-adapter: Concurrent requests can exceed rate limits on PostgreSQL",
+          "url": "https://github.com/advisories/GHSA-44jh-23m7-hpcf",
+          "severity": "low",
+          "cwe": [
+            "CWE-307",
+            "CWE-362"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+          },
+          "range": ">=1.6.17 <1.7.7"
+        }
+      ],
+      "effects": [
+        "better-auth"
+      ],
+      "range": "1.6.17 - 1.7.6",
+      "nodes": [
+        "node_modules/@better-auth/drizzle-adapter"
+      ],
+      "fixAvailable": {
+        "name": "better-auth",
+        "version": "1.7.23",
+        "isSemVerMajor": false
+      }
+    },
+    "@better-auth/kysely-adapter": {
+      "name": "@better-auth/kysely-adapter",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243464,
+          "name": "@better-auth/kysely-adapter",
+          "dependency": "@better-auth/kysely-adapter",
+          "title": "@better-auth/drizzle-adapter: Concurrent requests can exceed rate limits on PostgreSQL",
+          "url": "https://github.com/advisories/GHSA-44jh-23m7-hpcf",
+          "severity": "low",
+          "cwe": [
+            "CWE-307",
+            "CWE-362"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+          },
+          "range": ">=1.6.17 <1.7.0"
+        }
+      ],
+      "effects": [
+        "better-auth"
+      ],
+      "range": ">=1.6.17 <1.7.0",
+      "nodes": [
+        "node_modules/@better-auth/kysely-adapter"
+      ],
+      "fixAvailable": {
+        "name": "better-auth",
+        "version": "1.7.23",
+        "isSemVerMajor": false
+      }
+    },
+    "@typescript-eslint/eslint-plugin": {
+      "name": "@typescript-eslint/eslint-plugin",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils"
+      ],
+      "effects": [
+        "typescript-eslint"
+      ],
+      "range": "6.16.0 - 8.72.2",
+      "nodes": [
+        "node_modules/@typescript-eslint/eslint-plugin"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/parser": {
+      "name": "@typescript-eslint/parser",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@typescript-eslint/typescript-estree"
+      ],
+      "effects": [
+        "typescript-eslint"
+      ],
+      "range": "6.16.0 - 8.72.2",
+      "nodes": [
+        "node_modules/@typescript-eslint/parser"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/type-utils": {
+      "name": "@typescript-eslint/type-utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils"
+      ],
+      "effects": [
+        "@typescript-eslint/eslint-plugin"
+      ],
+      "range": "6.16.0 - 8.72.2",
+      "nodes": [
+        "node_modules/@typescript-eslint/type-utils"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/typescript-estree": {
+      "name": "@typescript-eslint/typescript-estree",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "minimatch"
+      ],
+      "effects": [
+        "@typescript-eslint/parser",
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils",
+        "typescript-eslint"
+      ],
+      "range": "6.16.0 - 8.72.2",
+      "nodes": [
+        "node_modules/@typescript-eslint/typescript-estree"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@typescript-eslint/utils": {
+      "name": "@typescript-eslint/utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@typescript-eslint/typescript-estree"
+      ],
+      "effects": [
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/type-utils",
+        "typescript-eslint"
+      ],
+      "range": "6.16.0 - 8.72.2",
+      "nodes": [
+        "node_modules/@typescript-eslint/utils"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "better-auth": {
+      "name": "better-auth",
+      "severity": "critical",
+      "isDirect": true,
+      "via": [
+        "@better-auth/drizzle-adapter",
+        "@better-auth/kysely-adapter",
+        {
+          "source": 1243435,
+          "name": "better-auth",
+          "dependency": "better-auth",
+          "title": "better-auth: Device login approval does not show the requesting client or permissions",
+          "url": "https://github.com/advisories/GHSA-q84f-53jg-9ppm",
+          "severity": "high",
+          "cwe": [
+            "CWE-451"
+          ],
+          "cvss": {
+            "score": 8.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N"
+          },
+          "range": ">=1.3.8-beta.3 <1.7.0-rc.3"
+        },
+        {
+          "source": 1243463,
+          "name": "better-auth",
+          "dependency": "better-auth",
+          "title": "@better-auth/drizzle-adapter: Concurrent requests can exceed rate limits on PostgreSQL",
+          "url": "https://github.com/advisories/GHSA-44jh-23m7-hpcf",
+          "severity": "low",
+          "cwe": [
+            "CWE-307",
+            "CWE-362"
+          ],
+          "cvss": {
+            "score": 3.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N"
+          },
+          "range": ">=1.6.17 <1.7.7"
+        },
+        {
+          "source": 1243466,
+          "name": "better-auth",
+          "dependency": "better-auth",
+          "title": "better-auth: OAuth Proxy lets an attacker sign in as another user",
+          "url": "https://github.com/advisories/GHSA-r4xp-prcw-77qf",
+          "severity": "high",
+          "cwe": [
+            "CWE-287",
+            "CWE-345"
+          ],
+          "cvss": {
+            "score": 7.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N"
+          },
+          "range": ">=1.5.0-beta.12 <1.7.7"
+        },
+        {
+          "source": 1243467,
+          "name": "better-auth",
+          "dependency": "better-auth",
+          "title": "better-auth: OAuth state can be used as a Magic Link to sign in as another user",
+          "url": "https://github.com/advisories/GHSA-965c-763c-88jm",
+          "severity": "critical",
+          "cwe": [
+            "CWE-287"
+          ],
+          "cvss": {
+            "score": 9.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N"
+          },
+          "range": ">=1.4.0-beta.18 <1.7.7"
+        }
+      ],
+      "effects": [],
+      "range": "1.3.8-beta.3 - 1.7.6",
+      "nodes": [
+        "node_modules/better-auth"
+      ],
+      "fixAvailable": {
+        "name": "better-auth",
+        "version": "1.7.23",
+        "isSemVerMajor": false
+      }
+    },
+    "minimatch": {
+      "name": "minimatch",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1244623,
+          "name": "minimatch",
+          "dependency": "minimatch",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-405"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=7.0.0 <11.0.1"
+        }
+      ],
+      "effects": [
+        "@typescript-eslint/typescript-estree"
+      ],
+      "range": "7.0.0 - 11.0.0",
+      "nodes": [
+        "node_modules/@typescript-eslint/typescript-estree/node_modules/minimatch"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "seroval": {
+      "name": "seroval",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243609,
+          "name": "seroval",
+          "dependency": "seroval",
+          "title": "Seroval: Code injection through a typed array's own constructor property",
+          "url": "https://github.com/advisories/GHSA-f86p-h4j2-7qgj",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79",
+            "CWE-94"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=1.6.0 <1.6.11"
+        },
+        {
+          "source": 1243611,
+          "name": "seroval",
+          "dependency": "seroval",
+          "title": "Seroval: Script injection through RegExp sources in serialized output",
+          "url": "https://github.com/advisories/GHSA-9wx9-5pv9-3349",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79",
+            "CWE-116"
+          ],
+          "cvss": {
+            "score": 4.7,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": ">=1.5.5 <1.6.10"
+        }
+      ],
+      "effects": [],
+      "range": "1.5.5 - 1.6.10",
+      "nodes": [
+        "node_modules/seroval"
+      ],
+      "fixAvailable": true
+    },
+    "typescript-eslint": {
+      "name": "typescript-eslint",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils"
+      ],
+      "effects": [],
+      "range": "<=8.72.2",
+      "nodes": [
+        "node_modules/typescript-eslint"
+      ],
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.36.0",
+        "isSemVerMajor": true
+      }
+    },
+    "zod": {
+      "name": "zod",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1243066,
+          "name": "zod",
+          "dependency": "zod",
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "severity": "high",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": "<4.6.6"
+        }
+      ],
+      "effects": [],
+      "range": "<4.6.6",
+      "nodes": [
+        "node_modules/zod"
+      ],
+      "fixAvailable": true
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 2,
+      "moderate": 8,
+      "high": 1,
+      "critical": 1,
+      "total": 12
+    },
+    "dependencies": {
+      "prod": 302,
+      "dev": 113,
+      "optional": 57,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 471
+    }
+  }
+}

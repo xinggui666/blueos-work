@@ -1,0 +1,32 @@
+PASS active segment grants one-time build+bonus, never monthly/daily fields
+PASS confirmed future segment has no grant or balance change before starts_at
+FAIL concurrent lazy activation grants frozen snapshot exactly once despite plan edits Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
++   build: 6,
++   export: 5,
++   generation: 3
+-   build: 12,
+-   export: 10,
+-   generation: 6
+  }
+
+PASS refund before activation permanently cancels all future one-time grants
+PASS activation/refund concurrency cannot leave a credited refunded order
+FAIL one-time due credits catch up after downtime even if segment expired; no monthly award Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
++   build: 12,
++   export: 10,
++   generation: 6
+-   build: 72,
+-   export: 60,
+-   generation: 36
+  }
+
+PASS corrupt pending snapshot fails atomically without partial balances/ledger
+PASS legacy eagerly credited rows default applied and are never credited again
+PASS exact activation boundary inclusive and repeated policy calls idempotent
+{"pass":7,"fail":2,"base":"http://localhost:4019","redOnly":false}

@@ -1,0 +1,2 @@
+REPRODUCED: missing dynamic app chunk leaves current bundled client's root empty with unhandled import rejection
+Client startup resilience defect confirmed in Chromium+mock bridge; NOT proof of the earlier final APK/emulator ANR root cause; no device run performed

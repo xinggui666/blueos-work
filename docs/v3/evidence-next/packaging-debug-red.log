@@ -1,0 +1,59 @@
+FFFFFF.
+======================================================================
+FAIL: test_archive_audit_rejects_secret_and_android_in_server (__main__.DeliveryTests.test_archive_audit_rejects_secret_and_android_in_server)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 28, in test_archive_audit_rejects_secret_and_android_in_server
+    with self.assertRaises(RuntimeError): delivery.audit_zip(p)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+AssertionError: RuntimeError not raised
+
+======================================================================
+FAIL: test_secrets_dependencies_backups_forbidden (__main__.DeliveryTests.test_secrets_dependencies_backups_forbidden) (name='android/debug.keystore')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 15, in test_secrets_dependencies_backups_forbidden
+    with self.subTest(name=name): self.assertFalse(delivery.allowed(name))
+                                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_secrets_dependencies_backups_forbidden (__main__.DeliveryTests.test_secrets_dependencies_backups_forbidden) (name='keys/test.KEYSTORE')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 15, in test_secrets_dependencies_backups_forbidden
+    with self.subTest(name=name): self.assertFalse(delivery.allowed(name))
+                                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_secrets_dependencies_backups_forbidden (__main__.DeliveryTests.test_secrets_dependencies_backups_forbidden) (name='keys/test.p12')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 15, in test_secrets_dependencies_backups_forbidden
+    with self.subTest(name=name): self.assertFalse(delivery.allowed(name))
+                                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_secrets_dependencies_backups_forbidden (__main__.DeliveryTests.test_secrets_dependencies_backups_forbidden) (name='keys/test.pfx')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 15, in test_secrets_dependencies_backups_forbidden
+    with self.subTest(name=name): self.assertFalse(delivery.allowed(name))
+                                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_secrets_dependencies_backups_forbidden (__main__.DeliveryTests.test_secrets_dependencies_backups_forbidden) (name='keys/test.key')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/blueos-work/scripts/test-package-delivery.py", line 15, in test_secrets_dependencies_backups_forbidden
+    with self.subTest(name=name): self.assertFalse(delivery.allowed(name))
+                                  ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.003s
+
+FAILED (failures=6)

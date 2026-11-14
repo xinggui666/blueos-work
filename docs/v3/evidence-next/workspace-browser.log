@@ -1,0 +1,8 @@
+PASS A caches an offline draft in real browser store
+PASS switch shared cookies to B: old A background writes cannot upload into B
+PASS B cannot see A cache after reload, including offline edits
+PASS tab close/restart and return to A restores A, never B
+PASS offline deletion remains deleted after restart/reconnect
+PASS same userId on distinct server origins uses independent browser storage keys
+PASS both billable browser delivery gates reject conflict receipt
+7 browser integration cases passed; real browser/store/API, no Android runtime claim

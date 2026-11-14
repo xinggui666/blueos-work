@@ -1,0 +1,10 @@
+{
+  "apk": "blueos-workshop-1.0.0-release.apk",
+  "sha256": "08d8ce6a6839a62cf55ab5d1c413ba785ed7d8f377bbd41958b2d85667f703b5",
+  "runtimeTested": false,
+  "scope": "static literal HTML/module reference inspection only",
+  "assetFiles": 4,
+  "literalReferencesChecked": 2,
+  "missingLiteralReferences": [],
+  "conclusion": "Static packaged entry/chunks inspected; this does not prove WebView MIME/interception/runtime compatibility or ANR cause"
+}

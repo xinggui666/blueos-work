@@ -5,16 +5,18 @@
 
 “通过”仅针对明确用例/环境，不代表整个需求已关闭；“未复验”也不等于功能不存在。旧审计是基线参考，不继承历史完整性宣称。证据保留与本轮环境重启限制见报告，不给虚构完成率。
 
+续批实现与红绿证据：`phase-1-followup-report.md`、`evidence-next/`。根目录与deploy锁文件npm audit均0；真实broker迁移/Gradle/APK仍未验。历史报告按当时状态保留，不以旧风险表覆盖新结果。
+
 ## P0追踪
 
 |编号|目标|状态|代码/测试|
 |---|---|---|---|
-|P0-01|origin+userId缓存与旧请求隔离|Web恢复后7/7通过，已归档；Android实包、旧缓存认领未闭环|workspace.ts、store.ts:setStudioIdentity、client.ts:CloudSync、workspace.test.ts、v3-workspace.mjs|
+|P0-01|origin+userId缓存与旧请求隔离|Web7/7；无归属旧草稿两次确认恢复UI6/6、单测4项；owner缓存拒绝，Android实包未验|workspace.ts、store.ts:setStudioIdentity、client.ts:CloudSync、workspace.test.ts、v3-workspace.mjs|
 |P0-02|冲突交付门禁/固定revision|代码和真实API通过；负向UI点击尚未执行|delivery.ts、delivery.server.ts、两处打包UI、v3-p0-api.mjs|
 |P0-03|同版本强更/异常恢复|服务端和混合UI修复；未构建/安装新版APK|logic.server.ts、android-web/app.tsx|
-|P0-04|会员未来段/退款边界|恢复后API/DB/并发通过；一次性额度仍发放即生效，周期另案；生产未验|0008视图、giveMembership、v3-migration.mjs|
+|P0-04|会员未来段/退款边界|0009一次性额度延至starts_at，幂等/退款/快照9/9、非空迁移3/3；历史已提前发不追改，周期另案|0008视图、giveMembership、v3-migration.mjs|
 |P0-05|不可变订单/授予权益快照|恢复后API/DB通过；历史缺失信息无法反推|0008触发器、订单确认/退款、v3-p0-api.mjs|
-|P0-06|最终APK设备验收|阻塞/未验；旧白屏/ANR未解决|阶段2继续，不重试已知致宿主故障的KVM|
+|P0-06|最终APK设备验收|阻塞/未验；缺失动态chunk导致空root已用浏览器复现，尚未修复，未证明旧APK ANR根因|阶段2继续，不重试已知致宿主故障的KVM|
 |P0-07|手表真机安装运行|阻塞/未验；没有型号/固件运行证据|真实工具链9项曾通过≠设备成功|
 |P0-08|首管保护/Worker拒绝不安全执行|恢复后本地单测/API/70秒Worker夹具通过；Docker/生产未验|bootstrap-admin.mjs、ensureActor、worker fail-closed单测、v3-heartbeat.mjs|
 
@@ -24,7 +26,7 @@
 |---|---|---|
 |P1-01|组件版本实现闭环|未闭环；需独立实现/复验，不把历史概括当作V3验收|
 |P1-02|完整资源上传和 RPK 打包|未闭环；需独立实现/复验，不把历史概括当作V3验收|
-|P1-03|每日/月度权益刷新|当前/未来会员区间和退款已修；每日/月度发放、时区、结转仍待完整闭环|
+|P1-03|每日/月度权益刷新|一次性grant按起点激活已修，不含monthly/daily；每日/月度发放、时区、结转仍待完整闭环|
 |P1-04|多设备会话与 Native refresh|未闭环；需独立实现/复验，不把历史概括当作V3验收|
 |P1-05|Android 缓存、离线删除和冲突状态机|共享Web缓存/离线删除标记已修；Android原生进程恢复/SAF/服务器切换未验|
 |P1-06|Worker 能力调度和长队列回收|长编译独立心跳已修，70秒故障编译夹具3项恢复后通过；能力匹配/多Worker/崩溃待复验|

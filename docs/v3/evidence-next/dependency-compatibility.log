@@ -1,0 +1,11 @@
+✔ patched Zod still enforces constrained collections (2.934363ms)
+✔ patched serializer preserves RegExp and typed arrays (1.885582ms)
+✔ scoped minimatch override preserves estree named API and glob semantics (7.305612ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 112.936667

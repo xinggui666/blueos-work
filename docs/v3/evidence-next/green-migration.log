@@ -1,0 +1,14 @@
+
+> db:migrate
+> node scripts/migrate.mjs
+
+[migrate] applied 0001_auth.sql
+[migrate] applied 0002_platform.sql
+[migrate] applied 0003_commerce.sql
+[migrate] applied 0004_devices.sql
+[migrate] applied 0005_protocol.sql
+[migrate] applied 0006_builds.sql
+[migrate] applied 0007_admin.sql
+[migrate] applied 0008_v3_entitlement_safety.sql
+[migrate] applied 0009_membership_credit_activation.sql
+[migrate] done — 9 migration(s) applied.
