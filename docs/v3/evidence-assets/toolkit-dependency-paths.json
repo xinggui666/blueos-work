@@ -1,0 +1,873 @@
+[
+  {
+    "name": "ejs",
+    "version": "2.7.4",
+    "location": "node_modules/ejs",
+    "isWorkspace": false,
+    "dependents": [
+      {
+        "type": "prod",
+        "name": "ejs",
+        "spec": "^2.6.1",
+        "from": {
+          "name": "webpack-bundle-analyzer",
+          "version": "3.9.0",
+          "location": "node_modules/webpack-bundle-analyzer",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "webpack-bundle-analyzer",
+              "spec": "^3.9.0",
+              "from": {
+                "name": "@blueos-toolkit/packager",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/packager",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/packager",
+                    "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/dsl-mvm",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/dsl-mvm",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/dsl-mvm",
+                          "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/compiler",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/@blueos-toolkit/compiler",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "@blueos-toolkit/compiler",
+                                "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "name": "@blueos-toolkit/dsl-mvm",
+                                  "version": "1.9.45-beta.44"
+                                }
+                              },
+                              {
+                                "type": "prod",
+                                "name": "@blueos-toolkit/compiler",
+                                "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "name": "@blueos-toolkit/packager",
+                                  "version": "1.9.45-beta.44"
+                                }
+                              },
+                              {
+                                "type": "prod",
+                                "name": "@blueos-toolkit/compiler",
+                                "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "name": "blueos-toolkit",
+                                  "version": "1.9.45-beta.44",
+                                  "location": "node_modules/blueos-toolkit",
+                                  "isWorkspace": false,
+                                  "dependents": [
+                                    {
+                                      "type": "prod",
+                                      "name": "blueos-toolkit",
+                                      "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                      "from": {
+                                        "location": "/workspace/blueos-toolkit-v3/installed"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/dsl-mvm",
+                          "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/packager",
+                            "version": "1.9.45-beta.44"
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/dsl-mvm",
+                          "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/packager",
+                    "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/server",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/server",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/server",
+                          "spec": "file:./blueos-toolkit-server-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/packager",
+                    "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dev": false,
+    "optional": false,
+    "devOptional": false,
+    "peer": false,
+    "bundled": false,
+    "overridden": false
+  },
+  {
+    "name": "jsrsasign",
+    "version": "7.2.2",
+    "location": "node_modules/jsrsasign",
+    "isWorkspace": false,
+    "dependents": [
+      {
+        "type": "prod",
+        "name": "jsrsasign",
+        "spec": "^7.2.2",
+        "from": {
+          "name": "@blueos-toolkit/packager",
+          "version": "1.9.45-beta.44",
+          "location": "node_modules/@blueos-toolkit/packager",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/dsl-mvm",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/dsl-mvm",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/compiler",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/compiler",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/dsl-mvm",
+                            "version": "1.9.45-beta.44"
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/packager",
+                            "version": "1.9.45-beta.44"
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/packager",
+                      "version": "1.9.45-beta.44"
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/server",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/server",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/server",
+                    "spec": "file:./blueos-toolkit-server-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "blueos-toolkit",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/blueos-toolkit",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "blueos-toolkit",
+                    "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                    "from": {
+                      "location": "/workspace/blueos-toolkit-v3/installed"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dev": false,
+    "optional": false,
+    "devOptional": false,
+    "peer": false,
+    "bundled": false,
+    "overridden": false
+  },
+  {
+    "name": "image-size",
+    "version": "1.2.1",
+    "location": "node_modules/image-size",
+    "isWorkspace": false,
+    "dependents": [
+      {
+        "type": "prod",
+        "name": "image-size",
+        "spec": "^1.0.2",
+        "from": {
+          "name": "@blueos-toolkit/dsl-mvm",
+          "version": "1.9.45-beta.44",
+          "location": "node_modules/@blueos-toolkit/dsl-mvm",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/dsl-mvm",
+              "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/compiler",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/compiler",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/compiler",
+                    "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/dsl-mvm",
+                      "version": "1.9.45-beta.44"
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/compiler",
+                    "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/packager",
+                      "version": "1.9.45-beta.44"
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/compiler",
+                    "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/dsl-mvm",
+              "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/packager",
+                "version": "1.9.45-beta.44"
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/dsl-mvm",
+              "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "blueos-toolkit",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/blueos-toolkit",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "blueos-toolkit",
+                    "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                    "from": {
+                      "location": "/workspace/blueos-toolkit-v3/installed"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "prod",
+        "name": "image-size",
+        "spec": "^1.0.2",
+        "from": {
+          "name": "@blueos-toolkit/packager",
+          "version": "1.9.45-beta.44",
+          "location": "node_modules/@blueos-toolkit/packager",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/dsl-mvm",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/dsl-mvm",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/compiler",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/compiler",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/dsl-mvm",
+                            "version": "1.9.45-beta.44"
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/packager",
+                            "version": "1.9.45-beta.44"
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/compiler",
+                          "spec": "file:./blueos-toolkit-compiler-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/packager",
+                      "version": "1.9.45-beta.44"
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/dsl-mvm",
+                    "spec": "file:./blueos-toolkit-dsl-mvm-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "@blueos-toolkit/server",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/server",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/server",
+                    "spec": "file:./blueos-toolkit-server-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "@blueos-toolkit/packager",
+              "spec": "file:./blueos-toolkit-packager-1.9.45-beta.44.tgz",
+              "from": {
+                "name": "blueos-toolkit",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/blueos-toolkit",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "blueos-toolkit",
+                    "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                    "from": {
+                      "location": "/workspace/blueos-toolkit-v3/installed"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dev": false,
+    "optional": false,
+    "devOptional": false,
+    "peer": false,
+    "bundled": false,
+    "overridden": false
+  },
+  {
+    "name": "request",
+    "version": "2.88.2",
+    "location": "node_modules/request",
+    "isWorkspace": false,
+    "dependents": [
+      {
+        "type": "prod",
+        "name": "request",
+        "spec": "^2.88.2",
+        "from": {
+          "name": "blueos-toolkit",
+          "version": "1.9.45-beta.44",
+          "location": "node_modules/blueos-toolkit",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "blueos-toolkit",
+              "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+              "from": {
+                "location": "/workspace/blueos-toolkit-v3/installed"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dev": false,
+    "optional": false,
+    "devOptional": false,
+    "peer": false,
+    "bundled": false,
+    "overridden": false
+  },
+  {
+    "name": "adb-driver",
+    "version": "0.1.8",
+    "location": "node_modules/adb-driver",
+    "isWorkspace": false,
+    "dependents": [
+      {
+        "type": "prod",
+        "name": "adb-driver",
+        "spec": "^0.1.8",
+        "from": {
+          "name": "adb-commander",
+          "version": "0.1.9",
+          "location": "node_modules/adb-commander",
+          "isWorkspace": false,
+          "dependents": [
+            {
+              "type": "prod",
+              "name": "adb-commander",
+              "spec": "^0.1.9",
+              "from": {
+                "name": "@blueos-toolkit/debugger",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/@blueos-toolkit/debugger",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/debugger",
+                    "spec": "file:./blueos-toolkit-debugger-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "@blueos-toolkit/server",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/server",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/server",
+                          "spec": "file:./blueos-toolkit-server-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "prod",
+                    "name": "@blueos-toolkit/debugger",
+                    "spec": "file:./blueos-toolkit-debugger-1.9.45-beta.44.tgz",
+                    "from": {
+                      "name": "blueos-toolkit",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/blueos-toolkit",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "blueos-toolkit",
+                          "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                          "from": {
+                            "location": "/workspace/blueos-toolkit-v3/installed"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "adb-commander",
+              "spec": "^0.1.9",
+              "from": {
+                "name": "adb-devices-emitter",
+                "version": "0.1.9",
+                "location": "node_modules/adb-devices-emitter",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "adb-devices-emitter",
+                    "spec": "^0.1.9",
+                    "from": {
+                      "name": "@blueos-toolkit/debugger",
+                      "version": "1.9.45-beta.44",
+                      "location": "node_modules/@blueos-toolkit/debugger",
+                      "isWorkspace": false,
+                      "dependents": [
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/debugger",
+                          "spec": "file:./blueos-toolkit-debugger-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "@blueos-toolkit/server",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/@blueos-toolkit/server",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "@blueos-toolkit/server",
+                                "spec": "file:./blueos-toolkit-server-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "name": "blueos-toolkit",
+                                  "version": "1.9.45-beta.44",
+                                  "location": "node_modules/blueos-toolkit",
+                                  "isWorkspace": false,
+                                  "dependents": [
+                                    {
+                                      "type": "prod",
+                                      "name": "blueos-toolkit",
+                                      "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                      "from": {
+                                        "location": "/workspace/blueos-toolkit-v3/installed"
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "prod",
+                          "name": "@blueos-toolkit/debugger",
+                          "spec": "file:./blueos-toolkit-debugger-1.9.45-beta.44.tgz",
+                          "from": {
+                            "name": "blueos-toolkit",
+                            "version": "1.9.45-beta.44",
+                            "location": "node_modules/blueos-toolkit",
+                            "isWorkspace": false,
+                            "dependents": [
+                              {
+                                "type": "prod",
+                                "name": "blueos-toolkit",
+                                "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                                "from": {
+                                  "location": "/workspace/blueos-toolkit-v3/installed"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "prod",
+              "name": "adb-commander",
+              "spec": "^0.1.9",
+              "from": {
+                "name": "blueos-toolkit",
+                "version": "1.9.45-beta.44",
+                "location": "node_modules/blueos-toolkit",
+                "isWorkspace": false,
+                "dependents": [
+                  {
+                    "type": "prod",
+                    "name": "blueos-toolkit",
+                    "spec": "file:../dist/blueos-toolkit-1.9.45-beta.44.tgz",
+                    "from": {
+                      "location": "/workspace/blueos-toolkit-v3/installed"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dev": false,
+    "optional": false,
+    "devOptional": false,
+    "peer": false,
+    "bundled": false,
+    "overridden": false
+  }
+]

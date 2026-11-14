@@ -1,0 +1,38 @@
+✔ PNG actual bytes survive bproj pack/inspect with digest (54.710585ms)
+✔ metadata-only and tampered resources must not export (1.48175ms)
+✔ import rejects missing resource even if project digest is valid (2.234856ms)
+✖ native source must copy real resource bytes and fail without bytes (7.237539ms)
+✔ legacy asset-free bproj remains importable (2.75674ms)
+✔ ZIP duplicate files and traversal are rejected (0.369437ms)
+✔ PNG headers, CRC, truncation and active SVG rejected (0.372792ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 6
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 285.570897
+
+✖ failing tests:
+
+test at src/lib/protocol/assets.test.ts:30:1
+✖ native source must copy real resource bytes and fail without bytes (7.237539ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///workspace/blueos-work/src/lib/protocol/assets.test.ts:31:27)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

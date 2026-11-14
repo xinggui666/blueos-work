@@ -1,0 +1,1 @@
+[worker] v3-assets-isolation-probe 启动：blueos-toolkit 1.9.45-beta.44，沙箱 bwrap，无签名证书，只出 debug 包

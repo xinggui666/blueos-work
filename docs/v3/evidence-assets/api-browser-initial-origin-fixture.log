@@ -1,0 +1,22 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: {"message":"Missing or null Origin","code":"MISSING_OR_NULL_ORIGIN"}
+
+403 !== 200
+
+    at account (file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:19:165)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:26:5
+    at async step (file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:17:30)
+    at async file:///workspace/blueos-work/scripts/e2e/v3-assets.mjs:25:2 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 403,
+  expected: 200,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

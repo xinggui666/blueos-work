@@ -1,0 +1,14 @@
+PASS signup does not auto-promote admin; binary actions require authentication
+PASS actual PNG upload, SHA, owner read and per-owner dedupe
+PASS wrong MIME/SVG/digest/corrupt header/oversize rejected without storage changes
+PASS real PNG larger than normal 1MB API budget succeeds via bounded binary action
+PASS cloud save checks owner resources and rejects undeclared/remote image paths
+PASS bproj includes exact PNG bytes; repeat download idempotent; fixed revision gate rejects stale
+PASS cross-account bproj import transfers actual bytes atomically, original untouched
+PASS upgrading historical metadata-only bproj preserves already-paid download entitlement
+PASS missing, undeclared, duplicate, traversal, corrupt binary packages reject with no new projects
+PASS quota concurrency serialized; failed import rolls back previously inserted resource bytes
+PASS immutable resource row rejects UPDATE; metadata admin ACL denies normal user
+PASS Chromium editor displays actual PNG and picker uploads replacement, not an icon placeholder
+PASS actual isolated worker builds frozen PNG resources, verifies VRU bytes and repeated download does not charge
+RESULT 13/13

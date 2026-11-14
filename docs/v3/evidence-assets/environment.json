@@ -1,0 +1,29 @@
+{
+  "capturedAt": "2026-11-14T05:41:34.963998-08:00",
+  "timezone": "America/Los_Angeles (PST)",
+  "baselineCommit": "e19154dcec1ec6f1436a84433f92611e8aa3286e",
+  "branch": "v3/phase-3-binary-assets",
+  "node": "v24.22.1",
+  "os": "Linux-6.12.113+-x86_64-with-glibc2.41",
+  "postgres": "17.5 local disposable TCP 127.0.0.1:55433",
+  "testDatabases": [
+    "blueos_v3_assets"
+  ],
+  "testedServerOrigins": [
+    "http://localhost:4020 (Vite)",
+    "http://localhost:4021 (compiled Node Nitro)"
+  ],
+  "toolkitVersion": "1.9.45-beta.44",
+  "toolkitArchiveSha256": "bbcae5b9d90d93f00ac521b3243caafe7217ca92e3b25afeb717c600614683c7",
+  "toolkitLockSha256": "948e249843b38e568b957d7f924306d1646add77b46dec9cafe30bf5e442984d",
+  "runtimeGates": {
+    "apkInstallLaunch": false,
+    "watchInstallRun": false,
+    "dockerDeployment": false,
+    "externalProductionDeployment": false,
+    "kvmUsed": false
+  },
+  "toolkitRedistributed": false,
+  "codeCommit": "ca9eb6c402252e7c0ae33598662d2be2f952aac8",
+  "completedAt": "2026-11-14T05:47:16.288673-08:00"
+}

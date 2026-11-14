@@ -1,0 +1,62 @@
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "大小",
+      "ok": true,
+      "detail": "39687 字节"
+    },
+    {
+      "name": "zip 结构",
+      "ok": true,
+      "detail": "6 个条目"
+    },
+    {
+      "name": "签名证书 META-INF/CERT",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "manifest.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "包名",
+      "ok": true,
+      "detail": "com.example.counter"
+    },
+    {
+      "name": "版本号",
+      "ok": true,
+      "detail": "1.0 (1)"
+    },
+    {
+      "name": "调试/正式",
+      "ok": true,
+      "detail": "debug 包"
+    },
+    {
+      "name": "页面路由",
+      "ok": true,
+      "detail": "pages/Home, pages/Two"
+    },
+    {
+      "name": "页面代码包 .vru",
+      "ok": true,
+      "detail": "264000 字节"
+    },
+    {
+      "name": "页面已编译进包",
+      "ok": true,
+      "detail": "2 个页面"
+    },
+    {
+      "name": "资源 assets/6200a8c59fdf2fba3720b4ca14aec195535ce4b25ea4f912c785ec338aea50c7.png",
+      "ok": true,
+      "detail": "4196 字节"
+    }
+  ],
+  "sha256": "7c3f0f1f19dd76f316ab768c36952f4b8e2a0e89b30d6b07ac83a3dde803b96a",
+  "bytes": 39687
+}

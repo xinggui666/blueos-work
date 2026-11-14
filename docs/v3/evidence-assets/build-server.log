@@ -1,0 +1,335 @@
+
+> build:server
+> NITRO_PRESET=node-server node scripts/with-app-env.mjs vite build && npm run db:migrate
+
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 1971 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/public/assets/styles-DcmxahhO.css       22.75 kB │ gzip:  5.55 kB
+.output/public/assets/save-file-DcAjmrcU.js      0.30 kB │ gzip:  0.25 kB
+.output/public/assets/jsx-runtime-Cx0BB4qO.js    1.08 kB │ gzip:  0.61 kB
+.output/public/assets/jobs-D6C8pU67.js           2.06 kB │ gzip:  1.09 kB
+.output/public/assets/market-BYKh55JK.js         2.37 kB │ gzip:  1.19 kB
+.output/public/assets/login-CH8cLm4i.js          3.10 kB │ gzip:  1.25 kB
+.output/public/assets/frame-CSZwwYCD.js          3.94 kB │ gzip:  1.68 kB
+.output/public/assets/developer-C254Tu54.js      4.15 kB │ gzip:  1.53 kB
+.output/public/assets/account-BXf6qYP_.js        6.39 kB │ gzip:  2.33 kB
+.output/public/assets/bproj-CCwpGq5c.js          7.60 kB │ gzip:  3.40 kB
+.output/public/assets/routes-CJ6RuOR1.js        12.78 kB │ gzip:  5.02 kB
+.output/public/assets/client-DGvA7Eh4.js        41.87 kB │ gzip: 15.47 kB
+.output/public/assets/admin-Bo2MSRY_.js         45.00 kB │ gzip: 11.88 kB
+.output/public/assets/edit._id-Crr9UPTK.js     121.33 kB │ gzip: 34.77 kB
+.output/public/assets/client-BHMSXYCI.js       229.70 kB │ gzip: 74.15 kB
+.output/public/assets/index-m8vwIn_F.js        293.90 kB │ gzip: 94.28 kB
+
+✓ built in 632ms
+vite v8.3.4 building ssr environment for production...
+transforming...
+✓ 375 modules transformed.
+rendering chunks...
+computing gzip size...
+node_modules/.nitro/vite/services/ssr/assets/styles-DcmxahhO.css                      22.75 kB │ gzip:  5.55 kB
+node_modules/.nitro/vite/services/ssr/assets/kysely-adapter-Cj_QZw5p.js                0.05 kB │ gzip:  0.07 kB
+node_modules/.nitro/vite/services/ssr/assets/start-5Z2QO8AU.js                         0.14 kB │ gzip:  0.13 kB
+node_modules/.nitro/vite/services/ssr/assets/empty-plugin-adapters-D9UWiqvJ.js         0.22 kB │ gzip:  0.16 kB
+node_modules/.nitro/vite/services/ssr/assets/rolldown-runtime-D7D4PA-g.js              0.36 kB │ gzip:  0.25 kB
+node_modules/.nitro/vite/services/ssr/assets/save-file-BBTFuuV1.js                     0.54 kB │ gzip:  0.35 kB
+node_modules/.nitro/vite/services/ssr/assets/functions-D1MFqbq7.js                     1.65 kB │ gzip:  0.88 kB
+node_modules/.nitro/vite/services/ssr/assets/isolation.server-CGNg1r0B.js              2.01 kB │ gzip:  1.05 kB
+node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-DMwCVded.js    2.13 kB │ gzip:  0.63 kB
+node_modules/.nitro/vite/services/ssr/assets/jobs-D9laj9MU.js                          3.13 kB │ gzip:  1.36 kB
+node_modules/.nitro/vite/services/ssr/assets/market-Wu6PiaFd.js                        3.63 kB │ gzip:  1.49 kB
+node_modules/.nitro/vite/services/ssr/assets/surface-Cklx0Vju.js                       3.90 kB │ gzip:  1.84 kB
+node_modules/.nitro/vite/services/ssr/assets/login-ja6tKU71.js                         4.53 kB │ gzip:  1.53 kB
+node_modules/.nitro/vite/services/ssr/assets/face-BpC7kBOj.js                          5.42 kB │ gzip:  1.90 kB
+node_modules/.nitro/vite/services/ssr/assets/developer-DvIGIStH.js                     6.27 kB │ gzip:  1.87 kB
+node_modules/.nitro/vite/services/ssr/assets/frame-Cs58V9mE.js                         7.04 kB │ gzip:  2.65 kB
+node_modules/.nitro/vite/services/ssr/assets/bproj-BIUJuTdZ.js                         7.73 kB │ gzip:  3.14 kB
+node_modules/.nitro/vite/services/ssr/assets/account-CVH8tI7a.js                      10.07 kB │ gzip:  2.89 kB
+node_modules/.nitro/vite/services/ssr/assets/url-Balfwie9.js                          14.86 kB │ gzip:  4.57 kB
+node_modules/.nitro/vite/services/ssr/assets/routes-CVdOzKKE.js                       20.00 kB │ gzip:  6.38 kB
+node_modules/.nitro/vite/services/ssr/assets/client-ChHQohZZ.js                       37.92 kB │ gzip: 11.56 kB
+node_modules/.nitro/vite/services/ssr/assets/db-uoXTRG7p.js                           39.97 kB │ gzip: 11.89 kB
+node_modules/.nitro/vite/services/ssr/assets/router-DVTz9kzy.js                       58.59 kB │ gzip: 15.89 kB
+node_modules/.nitro/vite/services/ssr/assets/admin-Df-TFbj-.js                        70.99 kB │ gzip: 15.48 kB
+node_modules/.nitro/vite/services/ssr/index.js                                        76.66 kB │ gzip: 19.50 kB
+node_modules/.nitro/vite/services/ssr/assets/policy-Caf0whkD.js                      119.54 kB │ gzip: 35.99 kB
+node_modules/.nitro/vite/services/ssr/assets/logic.server-C0Y01OuZ.js                172.17 kB │ gzip: 50.40 kB
+node_modules/.nitro/vite/services/ssr/assets/edit._id-CJHcUyH5.js                    188.13 kB │ gzip: 46.27 kB
+node_modules/.nitro/vite/services/ssr/assets/verify.server-itSrpoYC.js               396.37 kB │ gzip: 96.35 kB
+
+✓ built in 338ms
+
+[nitro] ◐ Building [Nitro] (preset: node-server, compatibility: 2026-11-14)
+[nitro] ✔ Generated public .output/public
+vite v8.3.4 building nitro environment for production...
+`output.codeSplitting.groups[0].name` is a function. Set `output.codeSplitting.groups[0].debugName` so the bundler timing report can identify this group.
+transforming...
+✓ 2452 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/server/_ssr/kysely-adapter-Cj_QZw5p.mjs               0.11 kB │ gzip:   0.11 kB
+.output/server/_ssr/start-5Z2QO8AU.mjs                        0.14 kB │ gzip:   0.13 kB
+.output/server/_ssr/empty-plugin-adapters-D9UWiqvJ.mjs        0.23 kB │ gzip:   0.16 kB
+.output/server/_chunks/core.mjs                               0.25 kB │ gzip:   0.18 kB
+.output/server/_ssr/rolldown-runtime-D7D4PA-g.mjs             0.41 kB │ gzip:   0.29 kB
+.output/server/_ssr/save-file-BBTFuuV1.mjs                    0.58 kB │ gzip:   0.38 kB
+.output/server/_chunks/ssr-renderer.mjs                       0.96 kB │ gzip:   0.49 kB
+.output/server/_libs/defu.mjs                                 1.41 kB │ gzip:   0.58 kB
+.output/server/_ssr/functions-D1MFqbq7.mjs                    1.58 kB │ gzip:   0.86 kB
+.output/server/_runtime.mjs                                   1.92 kB │ gzip:   0.87 kB
+.output/server/_ssr/isolation.server-CGNg1r0B.mjs             2.05 kB │ gzip:   1.08 kB
+.output/server/_tanstack-start-manifest_v-DMwCVded.mjs        2.19 kB │ gzip:   0.67 kB
+.output/server/_libs/ufo.mjs                                  2.21 kB │ gzip:   0.72 kB
+.output/server/_libs/better-auth__utils.mjs                   2.82 kB │ gzip:   1.06 kB
+.output/server/_ssr/jobs-D9laj9MU.mjs                         3.68 kB │ gzip:   1.44 kB
+.output/server/_ssr/surface-Cklx0Vju.mjs                      3.77 kB │ gzip:   1.83 kB
+.output/server/_ssr/market-Wu6PiaFd.mjs                       4.30 kB │ gzip:   1.58 kB
+.output/server/_ssr/login-ja6tKU71.mjs                        5.35 kB │ gzip:   1.65 kB
+.output/server/_ssr/face-BpC7kBOj.mjs                         6.05 kB │ gzip:   2.00 kB
+.output/server/_libs/nanostores.mjs                           6.11 kB │ gzip:   1.98 kB
+.output/server/_libs/zustand.mjs                              6.74 kB │ gzip:   2.08 kB
+.output/server/_ssr/developer-DvIGIStH.mjs                    7.17 kB │ gzip:   1.96 kB
+.output/server/_ssr/bproj-BIUJuTdZ.mjs                        7.80 kB │ gzip:   3.20 kB
+.output/server/_ssr/frame-Cs58V9mE.mjs                        7.80 kB │ gzip:   2.76 kB
+.output/server/_ssr/account-CVH8tI7a.mjs                     11.56 kB │ gzip:   2.98 kB
+.output/server/_libs/tanstack__history.mjs                   12.50 kB │ gzip:   3.70 kB
+.output/server/_ssr/url-Balfwie9.mjs                         14.79 kB │ gzip:   4.59 kB
+.output/server/_libs/lucide-react.mjs                        14.96 kB │ gzip:   3.60 kB
+.output/server/_libs/better-auth__memory-adapter.mjs         15.78 kB │ gzip:   4.43 kB
+.output/server/_libs/noble__hashes.mjs                       15.80 kB │ gzip:   5.71 kB
+.output/server/_libs/seroval.mjs                             16.07 kB │ gzip:   3.87 kB
+.output/server/_libs/@better-auth/telemetry+[...].mjs        17.13 kB │ gzip:   4.81 kB
+.output/server/_libs/h3-v2+rou3.mjs                          17.58 kB │ gzip:   5.16 kB
+.output/server/_ssr/routes-CVdOzKKE.mjs                      21.65 kB │ gzip:   6.46 kB
+.output/server/_ssr/client-ChHQohZZ.mjs                      37.06 kB │ gzip:  11.53 kB
+.output/server/_libs/jose.mjs                                39.36 kB │ gzip:   8.77 kB
+.output/server/_ssr/db-uoXTRG7p.mjs                          39.67 kB │ gzip:  11.96 kB
+.output/server/index.mjs                                     40.92 kB │ gzip:  12.38 kB
+.output/server/_libs/h3+rou3+srvx.mjs                        46.00 kB │ gzip:  12.36 kB
+.output/server/_libs/noble__ciphers.mjs                      47.40 kB │ gzip:  14.67 kB
+.output/server/_ssr/router-DVTz9kzy.mjs                      58.17 kB │ gzip:  15.82 kB
+.output/server/_ssr/ssr.mjs                                  74.94 kB │ gzip:  19.41 kB
+.output/server/_ssr/admin-Df-TFbj-.mjs                       80.39 kB │ gzip:  15.79 kB
+.output/server/_libs/@tanstack/router-core+[...].mjs        104.67 kB │ gzip:  24.73 kB
+.output/server/_ssr/policy-Caf0whkD.mjs                     118.88 kB │ gzip:  35.95 kB
+.output/server/_libs/pg.mjs                                 150.17 kB │ gzip:  34.88 kB
+.output/server/_ssr/logic.server-C0Y01OuZ.mjs               171.64 kB │ gzip:  50.32 kB
+.output/server/_ssr/edit._id-CJHcUyH5.mjs                   203.85 kB │ gzip:  46.84 kB
+.output/server/_ssr/verify.server-itSrpoYC.mjs              390.27 kB │ gzip:  95.76 kB
+.output/server/_libs/@better-auth/kysely-adapter+[...].mjs  483.06 kB │ gzip:  81.88 kB
+.output/server/_libs/@better-auth/core+[...].mjs            577.64 kB │ gzip: 131.13 kB
+.output/server/_libs/@tanstack/react-router+[...].mjs       741.01 kB │ gzip: 158.74 kB
+.output/server/_libs/electric-sql__pglite.mjs               751.95 kB │ gzip: 153.28 kB
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/index.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/index.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/utils.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/utils.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useMatch.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useMatch.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useLocation.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useLocation.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useNavigate.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useNavigate.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/Asset.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/Asset.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useBlocker.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useBlocker.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/Matches.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/Matches.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/RouterProvider.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/RouterProvider.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useRouterState.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useRouterState.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/Match.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/Match.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/HeadContent.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/HeadContent.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/useRouter.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/useRouter.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/ClientOnly.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/ClientOnly.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/CatchBoundary.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/CatchBoundary.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/link.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/link.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/matchContext.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/matchContext.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/routerContext.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/routerContext.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/Transitioner.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/Transitioner.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+[33m[MODULE_LEVEL_DIRECTIVE] [0mThe semantics of the module level directive "use client" in "node_modules/@tanstack/react-router/dist/esm/nonRouteComponentContext.js" may not be preserved when bundling.
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m node_modules/@tanstack/react-router/dist/esm/nonRouteComponentContext.js:1:1 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m "use client";
+ [38;5;240m  │[0m ──────┬──────  
+ [38;5;240m  │[0m       ╰──────── module level directive may not be preserved
+ [38;5;240m  │[0m 
+ [38;5;240m  │[0m [38;5;115mHelp[0m: For more information, see https://rolldown.rs/in-depth/directives#other-directives
+[38;5;246m───╯[0m
+
+✓ built in 512ms
+ℹ Generated .output/nitro.json
+
+[nitro] ✔ You can preview this build using npx vite preview
+
+> db:migrate
+> node scripts/migrate.mjs
+
+[migrate] up to date.

@@ -1,0 +1,7 @@
+PASS native signup/signin/get-session paths accept no-Origin HTTP and return stable user identity
+PASS browser cookie get-session remains compatible after Better Auth1.7 upgrade
+PASS second account bearer cannot impersonate first account even with expected-user payload
+PASS cross-origin cookie signout is rejected without revoking legitimate session
+PASS native bearer signout revokes only selected session, other same-account/device and other account remain
+PASS invalid bearer cannot obtain session or platform access; no fabricated alternate session path used
+{"pass":6,"environment":"actual local HTTP + PostgreSQL + Better Auth1.7, native-shaped and browser-cookie requests","externalOAuth":false,"javaHttpRuntime":false}
