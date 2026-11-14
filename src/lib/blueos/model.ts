@@ -184,7 +184,7 @@ export const CATALOG: CatalogItem[] = [
     group: "基础",
     label: "图片",
     tag: "image",
-    blurb: "官方 image。src 可以是本地路径或网络地址。",
+    blurb: "官方 image。请选择已上传的本地 PNG 资源，不支持网络地址。",
     limit: "官方说明不支持子组件和事件，生成时不会写 onclick。",
     w: 96,
     h: 96,

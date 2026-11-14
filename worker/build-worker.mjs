@@ -14,7 +14,7 @@
  * 限制 CPU 时间、单文件大小、内存和总时长；产物做结构和完整性检查后才算成功。
  */
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, writeFileSync, copyFileSync } from "node:fs";
 import { hostname, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -215,7 +215,7 @@ async function claim() {
   const r = await pool.query(
     `with c as (select id from build_tasks where status = 'waiting' order by priority desc, created_at for update skip locked limit 1)
      update build_tasks t set status = 'running', worker_id = $1, started_at = now(), heartbeat_at = now(), toolkit = $2, environment = $3
-     from c where t.id = c.id returning t.id, t.user_id, t.mode, t.package_name, t.version_name, t.version_code, t.routes, t.source_zip`,
+     from c where t.id = c.id returning t.id, t.user_id, t.mode, t.package_name, t.version_name, t.version_code, t.routes, t.source_zip, t.source_sha256`,
     [WORKER_ID, TOOLKIT_VERSION, JSON.stringify(environment)],
   );
   return r.rows[0] ?? null;
@@ -258,11 +258,43 @@ async function runTask(task) {
     mkdirSync(join(work, "app"), { recursive: true });
     mkdirSync(join(work, "home"), { recursive: true });
     // 解压源工程（只允许相对路径）。
-    for (const entry of readZipEntries(Buffer.from(task.source_zip))) {
+    const sourceBytes = Buffer.from(task.source_zip);
+    if (createHash("sha256").update(sourceBytes).digest("hex") !== task.source_sha256)
+      throw new Error("固定源工程 SHA-256 不符，拒绝编译");
+    let expectedAssets = [];
+    for (const entry of readZipEntries(sourceBytes)) {
+      if (entry.name === "blueos-assets.json") {
+        const manifest = JSON.parse(entry.data().toString("utf8"));
+        if (
+          manifest.version !== 1 ||
+          !Array.isArray(manifest.assets) ||
+          manifest.assets.length > 64
+        )
+          throw new Error("源工程资源清单无效");
+        expectedAssets = manifest.assets;
+        for (const a of expectedAssets)
+          if (
+            !/^assets\/[A-Za-z0-9_/-]+\.png$/.test(a.path) ||
+            a.path.includes("..") ||
+            !/^[0-9a-f]{64}$/.test(a.sha256) ||
+            !Number.isSafeInteger(a.bytes) ||
+            a.bytes < 1 ||
+            a.bytes > 2097152
+          )
+            throw new Error("源工程资源描述无效");
+      }
       if (entry.name.endsWith("/")) continue;
       const path = join(work, "app", entry.name);
       mkdirSync(dirname(path), { recursive: true });
       writeFileSync(path, entry.data());
+    }
+    for (const asset of expectedAssets) {
+      const data = readFileSync(join(work, "app", "src", asset.path));
+      if (
+        data.length !== asset.bytes ||
+        createHash("sha256").update(data).digest("hex") !== asset.sha256
+      )
+        throw new Error(`固定资源 ${asset.path} 摘要不符`);
     }
     if (task.mode === "release") {
       if (!SIGNING) throw new Error("这个 Worker 没有配置 release 签名证书");
@@ -292,6 +324,7 @@ async function runTask(task) {
       versionCode: task.version_code,
       mode: task.mode,
       routes: task.routes,
+      assets: expectedAssets,
     });
     log += `产物 ${file.split("/").pop()}，${rpk.length} 字节，SHA-256 ${verify.sha256}\n` + verify.checks.map((c) => `${c.ok ? "✔" : "✖"} ${c.name} ${c.detail}`).join("\n") + "\n";
     if (!verify.ok) return await finishRelease(task.id, ["running"], "failed", "产物检查未通过，没有当作成功", { log, verify });

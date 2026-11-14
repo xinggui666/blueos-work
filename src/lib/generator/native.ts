@@ -1,3 +1,5 @@
+import { inflateSync } from "node:zlib";
+import { checkAsset, pngInfo, type AssetFiles } from "../protocol/assets.ts";
 /**
  * 原生工程生成器（阶段 4）：直接消费统一工程协议 v2，生成 BlueOS 源工程（src/app.ux、manifest、页面 .ux）。
  *
@@ -16,7 +18,7 @@ import { HOST_TEMPLATE } from "./host-template.ts";
 import { iconPng } from "./png.ts";
 import { WATCH_RUNTIME, WATCH_RUNTIME_SHA256 } from "./watch-runtime.generated.ts";
 
-export const GENERATOR_VERSION = "native-2.0.0";
+export const GENERATOR_VERSION = "native-2.1.0-assets1";
 export const DESIGN_WIDTH = 466;
 
 export type NativeFile = { path: string; data: Uint8Array; text?: string };
@@ -41,12 +43,33 @@ export function pageUri(page: Pick<PageDoc, "name">): string {
 }
 
 /** 校验后生成源工程 zip。校验不过时不生成。 */
-export function generateNative(input: unknown): NativeSource | NativeFailure {
+export function generateNative(input: unknown, assetFiles: AssetFiles = {}): NativeSource | NativeFailure {
   const checked = validateDoc(input);
   const errors = checked.issues.filter((i) => i.level === "error");
   if (!checked.doc || errors.length) return { ok: false, issues: checked.issues.slice(0, 100) };
   const doc = checked.doc;
+  for (const [index, asset] of doc.assets.entries()) {
+    try {
+      const data = assetFiles[asset.path];
+      if (!data) throw new Error(`资源 ${asset.path} 缺失`);
+      checkAsset(asset, data);
+      if (createHash("sha256").update(data).digest("hex") !== asset.sha256)
+        throw new Error(`资源 ${asset.path} SHA-256 不符`);
+      const info = pngInfo(data),
+        raw = inflateSync(info.compressed, { maxOutputLength: info.decodedBytes });
+      if (raw.length !== info.decodedBytes) throw new Error("PNG 像素数据长度不符");
+      for (let p = 0; p < raw.length; p += info.rowBytes)
+        if (raw[p] > 4) throw new Error("PNG 行过滤器无效");
+    } catch (error) {
+      return {
+        ok: false,
+        issues: [{ path: `assets.${index}`, level: "error", message: (error as Error).message }],
+      };
+    }
+  }
   const files = emitFiles(doc);
+  for (const asset of doc.assets)
+    files.push({ path: `src/${asset.path}`, data: assetFiles[asset.path].slice() });
   const zip = writeZip(files.map((f) => ({ path: f.path, data: f.data })));
   return {
     ok: true,
@@ -89,6 +112,7 @@ function emitFiles(doc: ProjectDoc): NativeFile[] {
   };
   const files: NativeFile[] = [
     textFile("README.md", readme(doc)),
+    textFile("blueos-assets.json", JSON.stringify({version:1, assets:doc.assets.map(({path,sha256,bytes}) => ({path,sha256,bytes}))}, null, 2)),
     textFile(
       "package.json",
       JSON.stringify({ name: doc.project.packageName, version: `${doc.manifest.versionName}.0`.split(".").slice(0, 3).join("."), private: true }, null, 2) + "\n",
@@ -109,6 +133,7 @@ function emitFiles(doc: ProjectDoc): NativeFile[] {
 /** 手表端只需要运行时用到的字段。 */
 function runtimeDoc(doc: ProjectDoc) {
   return {
+    assetPaths: ["/assets/images/logo.png", ...doc.assets.map(a => `/${a.path}`)],
     startPageId: doc.startPageId,
     pages: doc.pages.map((p) => ({
       id: p.id,

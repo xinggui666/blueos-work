@@ -1,3 +1,4 @@
+import { requestLimit } from "./request-limits";
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { isClient, type ClientKind } from "@/lib/contract/surface";
@@ -11,7 +12,7 @@ export const platform = createServerFn({ method: "POST" })
     const client = (input as { client?: unknown }).client ?? "web";
     if (typeof action !== "string" || !/^[a-zA-Z]{2,40}$/.test(action)) throw new Error("无效请求");
     if (!isClient(client)) throw new Error("未知客户端");
-    if (JSON.stringify(payload).length > 500_000) throw new Error("请求过大");
+    if (new TextEncoder().encode(JSON.stringify(payload)).length > requestLimit(action)) throw new Error("请求过大");
     return { action, payload, client: client as ClientKind };
   })
   .handler(async ({ data, context }) => {

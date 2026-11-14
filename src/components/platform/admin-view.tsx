@@ -4,10 +4,10 @@ import { BuildsTab } from "./admin/builds";
 import { KeysTab, OrdersTab, PlansTab } from "./admin/commerce";
 import { ComponentsTab, SubmissionsTab } from "./admin/components";
 import { OverviewTab } from "./admin/overview";
-import { AnnouncementsTab, AuditTab, FlagsTab, ReleasesTab } from "./admin/system";
+import { AnnouncementsTab, AuditTab, FlagsTab, ReleasesTab, ProjectAssetsTab } from "./admin/system";
 import { UsersTab } from "./admin/users";
 
-const TABS = ["总览", "用户", "组件", "投稿", "套餐", "卡密", "订单", "构建", "版本", "开关", "公告", "审计"] as const;
+const TABS = ["总览", "用户", "组件", "投稿", "套餐", "卡密", "订单", "构建", "版本", "开关", "公告", "审计", "工程资源"] as const;
 type Tab = (typeof TABS)[number];
 
 export function AdminView() {
@@ -52,6 +52,7 @@ export function AdminView() {
       {tab === "版本" ? <ReleasesTab {...props} /> : null}
       {tab === "开关" ? <FlagsTab {...props} /> : null}
       {tab === "公告" ? <AnnouncementsTab {...props} /> : null}
+      {tab === "工程资源" ? <ProjectAssetsTab {...props} /> : null}
       {tab === "审计" ? <AuditTab {...props} /> : null}
     </main>
   );

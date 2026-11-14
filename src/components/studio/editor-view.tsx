@@ -1,3 +1,4 @@
+import { AssetPicker } from "./asset-picker";
 import { prepareDelivery } from "@/lib/platform/delivery";
 import { Link } from "@tanstack/react-router";
 import { Bug, ChevronLeft, Download, Eye, EyeOff, Layers, Lock, LockOpen, Redo2, Shapes, SlidersHorizontal, Trash2, Undo2, Package, Workflow } from "lucide-react";
@@ -929,6 +930,7 @@ function Inspector({
           下移一层
         </button>
       </div>
+      {node.type === "image" && <AssetPicker project={project} pageId={pageId} node={node} />}
       <div className="mt-3 grid gap-3">
         {item.fields.map((field) => (
           <FieldEditor key={field.key} field={field} project={project} pageId={pageId} node={node} />
@@ -1155,6 +1157,7 @@ function PackPanel({ project, doc, locate }: { project: Project; doc: ProjectDoc
             const file = event.target.files?.[0];
             event.target.value = "";
             if (!file) return;
+            if (file.size > 8 * 1024 * 1024) { setError("工程包不得超过 8MiB"); return; }
             setReport(null);
             void file
               .arrayBuffer()

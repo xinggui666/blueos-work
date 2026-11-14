@@ -233,3 +233,33 @@ export function AuditTab({ onError }: { onError: (t: string) => void }) {
     </Card>
   );
 }
+
+export function ProjectAssetsTab({ onError }: { onError: (text: string) => void }) {
+  const [rows, reload] = useAdmin<
+    { user_id: string; sha256: string; bytes: number; mime: string; created_at: string }[]
+  >("adminProjectAssets", {}, onError);
+  return (
+    <Card className="mt-5">
+      <h2 className="font-semibold">工程二进制资源（最近 100 条）</h2>
+      <p className="mt-2 text-sm text-muted">
+        只读清单：不提供代用户下载、改写或删除；资源被历史修订引用时必须保留。账号普通资源配额
+        20MiB，会员按不可变授权快照。此处不是商城组件附件。
+      </p>
+      <button type="button" className={ghost} onClick={reload}>
+        刷新资源清单
+      </button>
+      <ul>
+        {rows?.map((row) => (
+          <li
+            className="mt-2 break-all border-t border-line py-2 text-xs"
+            key={`${row.user_id}:${row.sha256}`}
+          >
+            {row.user_id} · {row.mime} · {row.bytes} 字节 · {when(row.created_at)}
+            <br />
+            <code>{row.sha256}</code>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}

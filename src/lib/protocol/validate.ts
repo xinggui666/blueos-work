@@ -1,3 +1,4 @@
+import { PROJECT_ASSET_MAX_BYTES } from "./assets.ts";
 /**
  * 工程协议校验器：结构（zod）+ 语义（引用、类型、表达式、循环依赖、依赖清单）。
  * 网页、服务端、导入 .bproj、构建前都调用同一个函数。
@@ -430,6 +431,8 @@ export function semanticIssues(doc: ProjectDoc): ProtocolIssue[] {
   });
 
   // ---- 资源 ----
+  if (doc.assets.reduce((n, a) => n + a.bytes, 0) > PROJECT_ASSET_MAX_BYTES)
+    err("assets", "工程资源总量超过 6MiB，无法保证工程包可恢复");
   const assetPaths = new Set<string>();
   doc.assets.forEach((a, i) => {
     claim(a.id, `assets.${i}`);
@@ -437,6 +440,20 @@ export function semanticIssues(doc: ProjectDoc): ProtocolIssue[] {
     assetPaths.add(a.path);
   });
 
+  for (const [pi, page] of doc.pages.entries())
+    for (const [ci, component] of page.components.entries()) {
+      if (component.type !== "image") continue;
+      const src = String(component.props.src ?? "/assets/images/logo.png");
+      if (
+        src &&
+        src !== "/assets/images/logo.png" &&
+        !assetPaths.has(src.startsWith("/") ? src.slice(1) : "")
+      )
+        err(
+          `pages.${pi}.components.${ci}.props.src`,
+          "图片必须引用已声明的 /assets/ 本地资源；不支持网络 URL 或任意文件路径",
+        );
+    }
   // ---- 依赖 ----
   const expected = computeDependencies(doc);
   const declared = new Map(doc.dependencies.map((d) => [`${d.type}@${d.componentId}`, d.version]));

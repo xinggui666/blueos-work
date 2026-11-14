@@ -10,6 +10,10 @@ server {
   # ssl_certificate /etc/letsencrypt/live/workshop.example.com/fullchain.pem;
   # ssl_certificate_key /etc/letsencrypt/live/workshop.example.com/privkey.pem;
 
+  # Binary PNG / bproj JSON-base64 transport. App still caps ordinary API actions at 1MB.
+  # Bind the upstream privately; do not expose port 8080 directly to the Internet.
+  client_max_body_size 16m;
+
   location / {
     proxy_pass http://127.0.0.1:8080;
     proxy_set_header Host $host;

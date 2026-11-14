@@ -1,3 +1,4 @@
+import { AssetImage } from "./asset-image";
 import { DESIGN, type DeviceShape, type SceneNode, type ScenePage } from "@/lib/blueos/model";
 
 export function WatchFace({ page, device, size }: { page: ScenePage; device: DeviceShape; size: number }) {
@@ -64,11 +65,7 @@ export function NodeGlyph({ node, guide = false }: { node: SceneNode; guide?: bo
     );
   }
   if (node.type === "image") {
-    const src = String(props.src || "image");
-    const name = src.split("/").pop() || "image";
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-2 px-1 text-center text-xs text-muted">{name}</div>
-    );
+    return <AssetImage src={String(props.src || "")} fit={props.objectFit} />;
   }
   if (node.type === "progress") {
     const percent = Math.max(0, Math.min(100, Number(props.percent) || 0));
