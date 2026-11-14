@@ -74,9 +74,9 @@ function project(id, type = "text") {
 const health = await fetch(`${BASE}/api/health`).then((r) => r.json()).catch(() => null);
 assert.ok(health?.ok, `服务不可用：${BASE}/api/health`);
 
-const admin = process.env.SMOKE_ADMIN_EMAIL
-  ? await signIn(process.env.SMOKE_ADMIN_EMAIL, process.env.SMOKE_ADMIN_PASSWORD)
-  : await signUp(`admin-${tag}@smoke.local`);
+assert.ok(process.env.SMOKE_ADMIN_EMAIL && process.env.SMOKE_ADMIN_PASSWORD,
+  "V3 requires an explicitly operator-bootstrapped test admin via SMOKE_ADMIN_EMAIL/SMOKE_ADMIN_PASSWORD; no first-signup auto-admin fallback");
+const admin = await signIn(process.env.SMOKE_ADMIN_EMAIL, process.env.SMOKE_ADMIN_PASSWORD);
 const user = await signUp(`user-${tag}@smoke.local`);
 const other = await signUp(`other-${tag}@smoke.local`);
 const pid = (n) => `p${tag}${n}`.replace(/[^a-z0-9]/g, "").padEnd(8, "0").slice(0, 40);

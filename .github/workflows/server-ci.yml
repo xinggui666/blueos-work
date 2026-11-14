@@ -18,14 +18,14 @@ jobs:
         env:
           POSTGRES_USER: blueos
           POSTGRES_PASSWORD: blueos-ci
-          POSTGRES_DB: blueos
+          POSTGRES_DB: blueos_ci
         ports:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -U blueos -d blueos"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      DATABASE_URL: postgres://blueos:blueos-ci@127.0.0.1:5432/blueos
+      DATABASE_URL: postgres://blueos:blueos-ci@127.0.0.1:5432/blueos_ci
       BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
       BETTER_AUTH_URL: http://localhost:8090
       PORT: "8090"
@@ -50,6 +50,7 @@ jobs:
         run: |
           node .output/server/index.mjs > server.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:8090/api/health && break; sleep 1; done
-          API_BASE=http://127.0.0.1:8090 API_ORIGIN=http://localhost:8090 npm run test:api
+          curl -fsS http://127.0.0.1:8090/api/health
+          BLUEOS_ALLOW_TEST_BOOTSTRAP=1 API_BASE=http://127.0.0.1:8090 API_ORIGIN=http://localhost:8090 node scripts/run-ci-api-smoke.mjs
       - if: failure()
         run: cat server.log || true
