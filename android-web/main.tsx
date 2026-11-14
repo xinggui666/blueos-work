@@ -1,6 +1,6 @@
 import "@/styles.css";
 import { hasNative, loadSession, saveFile } from "./bridge";
-import { swapUserStorage } from "./storage";
+
 
 /**
  * 启动顺序很重要：先按当前登录用户切换本机缓存，再加载编辑器状态（zustand persist 在模块加载时读 localStorage）。
@@ -13,7 +13,8 @@ function boot() {
     return;
   }
   const session = loadSession();
-  if (session.signedIn && session.user) swapUserStorage(localStorage, session.user.id);
+  // Shared CloudSync selects origin + user before any persisted editor data is shown.
+  void session;
   (globalThis as { __bwSaveFile?: typeof saveFile }).__bwSaveFile = (name, mime, base64) => saveFile(name, mime, base64);
   void import("./app").then(({ mount }) => mount(root));
 }

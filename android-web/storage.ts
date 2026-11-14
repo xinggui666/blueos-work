@@ -1,3 +1,4 @@
+/** @deprecated V2 compatibility helper/tests only. V3 startup uses shared origin+user workspace storage; never auto-adopts these legacy keys. */
 /**
  * 本机缓存按账号隔离。
  * 编辑器把工程存在固定的 localStorage 键里；同一台手机换账号登录时，

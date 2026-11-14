@@ -1,0 +1,24 @@
+
+> dev
+> node scripts/with-app-env.mjs vite dev --host 127.0.0.1 --port 4019
+
+8:26:28 PM [vite] (client) Re-optimizing dependencies because lockfile has changed
+
+  VITE v8.3.4  ready in 931 ms
+
+  ➜  Local:   http://127.0.0.1:4019/
+8:26:54 PM [vite] (ssr) connected.
+8:27:51 PM [vite] (ssr) page reload src/lib/platform/logic.server.ts
+8:27:51 PM [vite] (ssr) program reload
+8:29:23 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:29:23 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:29:42 PM [vite] (client) dependencies optimized: @better-auth/core, @better-auth/core/api, @better-auth/core/context, @better-auth/core/db, @better-auth/core/db/adapter, @better-auth/core/db/internal, @better-auth/core/env, @better-auth/core/error, @better-auth/core/instrumentation, @better-auth/core/oauth2, @better-auth/core/social-providers, @better-auth/core/utils/db, @better-auth/core/utils/deprecate, @better-auth/core/utils/email, @better-auth/core/utils/error-codes, @better-auth/core/utils/host, @better-auth/core/utils/id, @better-auth/core/utils/ip, @better-auth/core/utils/is-api-error, @better-auth/core/utils/json, @better-auth/core/utils/state, @better-auth/core/utils/string, @better-auth/core/utils/url, @better-auth/kysely-adapter, @better-auth/telemetry, @better-auth/utils, @better-auth/utils/base32, @better-auth/utils/base64, @better-auth/utils/binary, @better-auth/utils/hash, @better-auth/utils/hmac, @better-auth/utils/otp, @better-auth/utils/password, @better-auth/utils/random, @better-fetch/fetch, @noble/ciphers/chacha.js, @noble/ciphers/utils.js, @noble/hashes/hkdf.js, @noble/hashes/sha2.js, @noble/hashes/sha3.js, @noble/hashes/utils.js, @tanstack/history, @tanstack/router-core, @tanstack/router-core/isServer, @tanstack/router-core/ssr/client, @tanstack/router-core/ssr/server, better-call, defu, h3-v2, jose/errors, nanostores, seroval
+8:29:42 PM [vite] (client) optimized dependencies changed. reloading
+2026-11-14T12:32:21.571Z WARN [Better Auth]: Invalid password
+2026-11-14T12:32:21.878Z ERROR [Better Auth]: Provider not found. Make sure to add the provider in your auth config { provider: 'unconfigured-fixture' }
+2026-11-14T12:32:21.893Z ERROR [Better Auth]: Failed to parse state [StateError [BetterAuthError]: State mismatch: verification not found] {
+  code: 'state_mismatch',
+  details: { state: 'invalid-fixture' },
+  errorURL: undefined
+}
+8:38:14 PM [vite] (client) hmr update /src/styles.css?direct

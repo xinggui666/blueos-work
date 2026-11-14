@@ -1,0 +1,217 @@
+
+> test
+> node --experimental-strip-types --test src/lib/blueos/logic.test.ts src/lib/generator/*.test.ts src/lib/platform/*.test.ts src/lib/protocol/*.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/preview-path-prefix.test.ts src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts android-web/storage.test.ts worker/*.test.mjs
+
+✔ 首次登录：本机已有数据归当前账号 (0.826219ms)
+✔ 换账号：A 的数据收起来不丢，B 看不到；换回 A 原样恢复 (0.201866ms)
+▶ callTool failure memo
+  ✔ replays an identical failure within the memo window without refetching (4.208561ms)
+  ✔ keys by token identity so a reminted token shares the memo entry (0.913935ms)
+  ✔ sweeps expired entries on write so unique keys do not accumulate (1.538795ms)
+  ✔ never memoizes login-required 401s (0.886073ms)
+✔ callTool failure memo (8.661907ms)
+▶ callTool in the workspace preview vs deployed
+  ✔ returns pending (no loginRequired) when the preview has no token yet (0.646654ms)
+  ✔ returns a plain error (no sign-in CTA) when a deployed app has no token (0.356433ms)
+  ✔ treats a gate 401 in the preview as pending and parks the rejected token (0.807589ms)
+  ✔ keeps loginRequired for a gate 401 on a deployed app (0.567379ms)
+✔ callTool in the workspace preview vs deployed (2.711851ms)
+▶ callTool
+  ✔ resolves ok:false for non-serializable args instead of rejecting (0.305588ms)
+✔ callTool (0.414479ms)
+▶ isLoginRequired
+  ✔ is true only for login-required failures (0.152254ms)
+✔ isLoginRequired (0.228792ms)
+▶ redirectToLoginIfRequired
+  ✔ no-ops when login is not required (0.237042ms)
+  ✔ navigates to the server-built loginUrl in the browser (0.12771ms)
+  ✔ opens a new tab instead of navigating when framed (0.107015ms)
+  ✔ falls back to navigation when framed and the popup is blocked (0.079545ms)
+  ✔ returns false when the result has no loginUrl (0.062364ms)
+  ✔ returns false on the server (no window) (0.060242ms)
+✔ redirectToLoginIfRequired (0.862314ms)
+▶ GoogleCalendarTools
+  ✔ does not expose a list_events name (2.481086ms)
+✔ GoogleCalendarTools (2.579528ms)
+▶ classifyCallToolError
+  ✔ returns null for successful results (0.270185ms)
+  ✔ classifies a pending preview token as pending before any other kind (0.118064ms)
+  ✔ classifies a deployed missing token as error, not a login CTA (0.05918ms)
+  ✔ classifies gate loginRequired without a missing-token message as login (0.054934ms)
+  ✔ classifies not_connected and failed_precondition (0.094386ms)
+  ✔ classifies scope_denied without claiming a missing grant (0.075958ms)
+  ✔ classifies access_denied (0.087008ms)
+  ✔ falls back to a generic error with the raw message (0.121116ms)
+✔ classifyCallToolError (1.09583ms)
+▶ readinessProbeDelayMs
+  ✔ backs off through the schedule and then holds the last delay (1.228794ms)
+  ✔ clamps a negative attempt to the first delay (0.157617ms)
+✔ readinessProbeDelayMs (2.398542ms)
+▶ readinessProbeExhausted
+  ✔ gives up only once the total wait budget has elapsed (0.229749ms)
+✔ readinessProbeExhausted (0.351761ms)
+▶ verifyGateIdentityToken
+  ✔ returns the identity for a valid token (16.963362ms)
+  ✔ omits optional claims as nulls (5.771741ms)
+  ✔ rejects a wrong audience (2.238644ms)
+  ✔ rejects a wrong issuer (1.444633ms)
+  ✔ rejects an expired token (4.20854ms)
+  ✔ rejects a token without exp (1.273202ms)
+  ✔ rejects a token signed by a different key with the same kid (1.366066ms)
+  ✔ refetches the JWKS when the kid rotates (3.165675ms)
+✔ verifyGateIdentityToken (38.276112ms)
+▶ gateIdentityFromHeaders
+  ✔ verifies the header token end to end and fails closed without it (27.59152ms)
+  ✔ activates on a deployed-shaped request without GROK_GATE_ORIGIN (6.58945ms)
+  ✔ verifies a preview-audience token with no gate env vars via the loopback default (1.428575ms)
+  ✔ rejects a wrong-issuer token in the loopback default mode (5.313539ms)
+  ✔ verifies a preview-audience token when only GROK_GATE_ORIGIN is set (2.206596ms)
+  ✔ rejects a preview-audience token when GROK_PROJECT_ID is set (1.50475ms)
+  ✔ rejects an app-audience token in preview mode (1.619266ms)
+✔ gateIdentityFromHeaders (47.161964ms)
+▶ gateIdentityEnabled
+  ✔ is enabled by default with no gate env vars (0.142526ms)
+  ✔ is disabled when VITE_AUTH_ENABLED is false (0.078815ms)
+✔ gateIdentityEnabled (0.33004ms)
+▶ gateTokenAudience
+  ✔ pins app:<id> when GROK_PROJECT_ID is set, even alongside GROK_GATE_ORIGIN (0.097223ms)
+  ✔ pins preview when GROK_PROJECT_ID is unset (0.058209ms)
+✔ gateTokenAudience (0.425065ms)
+▶ gateIdentityUserInfo
+  ✔ falls back to a synthetic email and name for sub-only claims (0.174815ms)
+  ✔ keeps real claims, lowercasing the email and marking it verified (0.159879ms)
+✔ gateIdentityUserInfo (0.432583ms)
+▶ sessionBoundToGateIdentity
+  ✔ keeps the session when it is bound to the same gate sub (0.171196ms)
+  ✔ rotates when the session belongs to a different gate sub (0.061595ms)
+  ✔ rotates when the session user has no gate-bound account (0.050278ms)
+✔ sessionBoundToGateIdentity (0.389955ms)
+▶ resolveSignInGateState
+  ✔ is pending while the session check is in flight, user or not (0.602404ms)
+  ✔ is signed_in once a user is present (0.13054ms)
+  ✔ is signed_out only after the check resolved with no user (0.135392ms)
+✔ resolveSignInGateState (1.867078ms)
+✔ old projects gain function and time fields (13.48808ms)
+✔ condition skips an action and call runs structured steps (0.545984ms)
+✔ clock formats stay separate (0.341202ms)
+✔ 新组件放置：连续加入的组件互不重叠，并且在圆表可见区域内 (12.965ms)
+✔ 新组件放置：画面放满时选重叠最少的位置，不会叠在同一个点 (22.091502ms)
+(node:30894) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/bw-gen-cuJT6w/sys.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /tmp/bw-gen-cuJT6w/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30894) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/bw-gen-Amx9ON/sys.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /tmp/bw-gen-Amx9ON/package.json.
+(node:30894) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///tmp/bw-gen-GqpS1g/sys.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /tmp/bw-gen-GqpS1g/package.json.
+✔ 生成文件结构：manifest、app.ux、页面、引擎、逻辑数据 (41.585272ms)
+✔ 校验不过的工程不生成 (1.114479ms)
+✔ 模拟手表页面：点击 count+1、绑定刷新、变量事件弹 toast 并显示组件 (13.243335ms)
+✔ 模拟手表页面：跳转、系统返回同步、持久化变量重启后恢复 (37.782851ms)
+✔ 编辑器示例工程（原生模式）可以直接生成 (8.506918ms)
+✔ 源工程 zip 不能通过 RPK 产物检查 (34.541526ms)
+✔ 条目路径带 .. 的 zip 被拒绝 (0.53235ms)
+✔ 资源文件按文件头判断类型，SVG 和伪造扩展名被拒绝 (3.532005ms)
+✔ 卡密安全清单不含明文，并防 CSV 公式注入 (0.492969ms)
+✔ 灰度：100% 全量，0% 不推；同一用户结果稳定；比例大致符合 (9.403126ms)
+✔ 套餐限定组件分类：其他分类的会员组件不可用，授权组件不受影响 (0.43124ms)
+✔ conflict/invalid/no-save receipt prevents all billable calls (1.505676ms)
+✔ successful delivery forwards fixed revision and digest, not a fresh latest lookup (0.416975ms)
+✔ 错误映射到 HTTP 状态码 (0.755225ms)
+✔ legacy recovery never reads owner-tagged account drafts (1.211248ms)
+✔ legacy recovery requires two confirmations, validates and creates new IDs without deleting raw bytes (10.18707ms)
+✔ legacy recovery cancellation and identity switch cannot commit (0.949202ms)
+✔ damaged legacy JSON/schema never commits and bytes remain unchanged (0.363903ms)
+✔ super admin passes every known permission (0.66445ms)
+✔ last super admin cannot be removed and others cannot mint one (0.382304ms)
+✔ codes normalize without storing a guessable form (0.178667ms)
+✔ submission machine checks reject scripts (0.363366ms)
+✔ membership and license access stay closed without entitlement (0.176484ms)
+✔ origin/account isolation, offline drafts and restart; legacy cache not silently adopted (1.454453ms)
+▶ previewPathPrefix
+  ✔ reads the port id segment on path-based preview hosts (0.874117ms)
+  ✔ ignores other hosts and paths without a port id (0.167345ms)
+✔ previewPathPrefix (2.071216ms)
+▶ prefixRewrite
+  ✔ strips the prefix on input (0.243749ms)
+  ✔ adds the prefix on output (0.138759ms)
+✔ prefixRewrite (0.571765ms)
+▶ 表达式
+  ✔ 运算优先级、字符串拼接、比较和条件 (1.841497ms)
+  ✔ 时间函数与格式 (0.508098ms)
+  ✔ 语法错误、未知函数、未知变量、类型错误都能检查出来 (0.880574ms)
+  ✔ 复杂度和运行限制 (0.829633ms)
+✔ 表达式 (5.151094ms)
+▶ Schema 与语义校验
+  ✔ 示例工程迁移后通过校验 (26.320805ms)
+  ✔ 计数器工程通过校验 (3.272093ms)
+  ✔ 悬空引用、重复 ID、类型不匹配、依赖缺失会报错 (1.839936ms)
+  ✔ 函数循环调用被拒绝，返回值类型检查 (2.184014ms)
+  ✔ 绑定只允许明确的属性，类型要匹配 (0.962741ms)
+  ✔ 循环次数超过上限报错 (1.016832ms)
+  ✔ 结构错误给出路径 (1.285416ms)
+✔ Schema 与语义校验 (37.394855ms)
+▶ 版本迁移
+  ✔ 识别版本 (0.876998ms)
+  ✔ v1 编辑器工程：动作转事件、条件转 if、时间绑定和 $变量 文本转绑定 (2.269483ms)
+  ✔ v1 DSL 迁移 (1.643049ms)
+  ✔ 更新版本的工程拒绝打开且不抛异常 (0.15491ms)
+✔ 版本迁移 (5.177742ms)
+▶ 编辑器适配往返
+  ✔ 示例工程 project → doc → project → doc 不变 (1.356134ms)
+  ✔ 编辑器还不能表达的内容（带参函数、计时器、条件事件）往返不丢 (1.560472ms)
+  ✔ 编辑器删除组件后，引用它的保留事件和绑定一起移除 (0.45346ms)
+✔ 编辑器适配往返 (3.539357ms)
+▶ .bproj
+  ✔ 打包、校验、预览 (26.975108ms)
+  ✔ 内容被篡改时拒绝导入 (2.38963ms)
+  ✔ 旧版工程包（只有 project.json）按旧格式迁移导入 (2.534322ms)
+  ✔ 拒绝路径穿越、损坏文件和非 ZIP (1.364827ms)
+  ✔ 支持 deflate 压缩的 ZIP（注入解压函数） (2.177707ms)
+✔ .bproj (35.978185ms)
+▶ 执行语义（运行时）
+  ✔ 点击 → 变量 → 绑定刷新 → 变量事件 → 显示组件和提示 (3.179071ms)
+  ✔ 隐藏的组件和其他页面的组件不响应点击 (0.23834ms)
+  ✔ 动作出错时停止该事件的后续动作并记录错误 (0.460846ms)
+  ✔ 函数参数、默认值、返回值和条件分支 (3.086945ms)
+  ✔ 变量连锁循环被限制，不会卡死 (0.958968ms)
+  ✔ 运行时也限制函数递归深度（防御绕过校验的数据） (0.474065ms)
+  ✔ 防重复触发 (0.289399ms)
+  ✔ 倒计时结束触发事件，计时器绑定显示剩余时间和百分比 (2.453899ms)
+  ✔ 每分钟时间事件和指定时刻触发；时间绑定格式化 (0.410898ms)
+  ✔ 页面事件顺序：load/show，跳转 hide，返回 exit (0.515502ms)
+✔ 执行语义（运行时） (12.634653ms)
+▶ 原生协议编辑模式
+  ✔ doc → 原生 project → doc 完全一致（ID、顺序、逻辑都不变） (12.136596ms)
+  ✔ 旧 v1 工程 toNative 只转换一次，结果通过校验，再往返不变 (24.06215ms)
+  ✔ 原生模式下文本里的 $变量 不会再自动生成绑定（删除的绑定不会复活） (0.342304ms)
+  ✔ logicOf 只取逻辑部分 (0.315448ms)
+✔ 原生协议编辑模式 (38.07687ms)
+▶ 逻辑编辑工具
+  ✔ 表达式标识符识别与改名不碰字符串、函数名和成员名 (0.779714ms)
+  ✔ 变量改名同步所有表达式，被参数遮蔽的函数不改 (7.480828ms)
+  ✔ 引用位置：表达式、触发器、setVar、绑定 (0.845193ms)
+  ✔ 问题定位：路径 → 事件里的嵌套动作；调试记录 ID → 位置 (1.902145ms)
+  ✔ 作用域：页面变量只在本页可见 (0.384912ms)
+  ✔ 新建动作默认值可通过校验，复制动作全部换新 ID，更新嵌套动作 (6.343605ms)
+  ✔ 默认值解析按类型 (0.312796ms)
+  ✔ 调用关系 (0.325092ms)
+✔ 逻辑编辑工具 (18.996183ms)
+▶ 调试器运行时接口
+  ✔ 手动触发事件、直接改变量（会触发变量事件）、事件用时、导航 (2.935583ms)
+  ✔ 停用的事件手动触发也不执行 (0.238213ms)
+✔ 调试器运行时接口 (3.398744ms)
+✔ auto and bwrap fail closed on missing binary, denial, timeout, network leak (3.63849ms)
+✔ none and unknown modes cannot invoke compiler (0.213773ms)
+✔ successful isolated probe requires clear environment and returns bwrap (0.409898ms)
+✔ worker process exits before database heartbeat/claim if sandbox absent or forbidden (174.554003ms)
+ℹ tests 141
+ℹ suites 27
+ℹ pass 141
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 650.921185

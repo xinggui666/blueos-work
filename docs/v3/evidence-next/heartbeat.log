@@ -1,0 +1,3 @@
+PASS actual worker heartbeat remains live beyond 60s during a 70s fixture compiler command
+PASS new request while long compile running is not falsely unavailable; queued reservation cancelled
+PASS fixture compiler failure releases reservation exactly once; no RPK success claimed

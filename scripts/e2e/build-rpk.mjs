@@ -33,6 +33,10 @@ async function signUp(email) {
   return res.headers.get("set-auth-token");
 }
 async function call(token, action, payload = {}) {
+  if (["exportBundle", "requestBuild"].includes(action) && payload.expectedRevision === undefined) {
+    const latest = await call(token, "getProjectDoc", { projectId: payload.projectId ?? payload.project?.id });
+    if (latest.status === 200) payload = { ...payload, expectedRevision: latest.json.revision };
+  }
   const res = await fetch(`${BASE}/api/v1/platform`, { method: "POST", headers: { ...H, authorization: `Bearer ${token}` }, body: JSON.stringify({ action, payload, client: "web" }) });
   return { status: res.status, json: await res.json().catch(() => null) };
 }
@@ -61,8 +65,10 @@ async function waitStatus(token, id, done = ["succeeded", "failed", "cancelled"]
 }
 const quota = async (token) => (await call(token, "me")).json.quota.build;
 
-const admin = await signUp(`admin-${tag}@build.local`);
-await call(admin, "me"); // 空库：第一个调用接口的账号成为超级管理员
+const admin = process.env.SMOKE_ADMIN_EMAIL
+ ? await (async()=>{const response=await fetch(`${BASE}/api/auth/sign-in/email`,{method:"POST",headers:H,body:JSON.stringify({email:process.env.SMOKE_ADMIN_EMAIL,password:process.env.SMOKE_ADMIN_PASSWORD})});await response.text();return response.headers.get("set-auth-token");})()
+ : await signUp(`admin-${tag}@build.local`);
+assert.ok((await call(admin, "me")).json.roles.includes("super_admin"), "需显式配置管理员，不再授予首个注册账号");
 const user = await signUp(`user-${tag}@build.local`);
 const userId = (await call(user, "me")).json.userId;
 const doc = counterDoc();

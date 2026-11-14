@@ -1,0 +1,106 @@
+{
+  "sourceCommit": "58dd16e2fca5e3a5cd06d9d18ef9bff945edb24e",
+  "applicationCommit": "0140b230b88c9aaa06186b18884b27912eba4435",
+  "environment": "local disposable PostgreSQL + actual HTTP + Chromium + bwrap",
+  "results": {
+    "unit": {
+      "status": "passed",
+      "cases": 137,
+      "command": "npm test",
+      "log": "recovery-unit.log"
+    },
+    "typecheck": {
+      "status": "passed",
+      "command": "npm run typecheck",
+      "log": "recovery-typecheck.log"
+    },
+    "lint": {
+      "status": "passed with 15 warnings, 0 errors",
+      "command": "npm run lint",
+      "log": "recovery-lint.log"
+    },
+    "apiSafety": {
+      "status": "passed",
+      "cases": 17,
+      "command": "API_BASE=<local test origin> DATABASE_URL=<disposable DB> node scripts/e2e/v3-p0-api.mjs",
+      "log": "recovery-api.log"
+    },
+    "apiRegression": {
+      "status": "passed serially after fixture cleanup",
+      "cases": 30,
+      "command": "API_BASE/API_ORIGIN/SMOKE_ADMIN_EMAIL/SMOKE_ADMIN_PASSWORD=<disposable fixture injection> node scripts/api-smoke.mjs",
+      "log": "recovery-legacy-api.log",
+      "priorFailure": "recovery-legacy-api-concurrent-fixture-failure.log"
+    },
+    "browserWorkspace": {
+      "status": "passed after initial assets loaded",
+      "cases": 7,
+      "command": "E2E_BASE=<local test origin> node scripts/e2e/v3-workspace.mjs",
+      "log": "recovery-browser.log",
+      "priorFailure": "recovery-browser-initial-chunk-failure.log"
+    },
+    "browserLogic": {
+      "status": "passed after login hydration precondition",
+      "cases": 8,
+      "command": "E2E_BASE=<local test origin> node scripts/e2e/web-logic.mjs",
+      "log": "recovery-web-logic.log",
+      "priorFailure": "recovery-web-logic-login-hydration-failure.log"
+    },
+    "populatedUpgrade": {
+      "status": "passed",
+      "cases": 3,
+      "command": "V3_MIGRATION_PREPARE_OLD=true DATABASE_URL=<EMPTY disposable DB> node scripts/e2e/v3-migration.mjs",
+      "log": "recovery-populated-upgrade.log"
+    },
+    "heartbeat": {
+      "status": "passed",
+      "cases": 3,
+      "command": "API_BASE=<local test origin> DATABASE_URL=<disposable DB> node scripts/e2e/v3-heartbeat.mjs",
+      "log": "recovery-heartbeat.log",
+      "warning": "Actual Worker and bwrap; declared failure compiler fixture, not official RPK build"
+    },
+    "authInvariant": {
+      "status": "passed",
+      "command": "VITE_AUTH_ENABLED=true npm run check:auth -- --dev-url <actual local origin>",
+      "log": "recovery-auth-invariant.log"
+    },
+    "androidWebBundle": {
+      "status": "built",
+      "command": "npm run build:android-web",
+      "log": "recovery-android-web-build.log",
+      "warning": "not APK installation/runtime"
+    },
+    "nodeBundle": {
+      "status": "built",
+      "command": "NITRO_PRESET=node-server node scripts/with-app-env.mjs npx --no-install vite build",
+      "log": "recovery-server-build.log",
+      "warning": "HTTP tests used Vite, no production-node deployment runtime acceptance"
+    },
+    "dependencyAudit": {
+      "status": "FAILED / not remediated",
+      "counts": {
+        "critical": 1,
+        "high": 1,
+        "moderate": 8,
+        "low": 2
+      },
+      "command": "npm audit --json",
+      "log": "recovery-dependency-audit.json",
+      "warning": "Package advisories; exploitability in current configuration not established"
+    },
+    "officialRpk": {
+      "status": "earlier observed 9/9, raw files lost after runtime reset; not rerun",
+      "sha256": "093fb8f60738d6dd9d8c779c9156ef0f2a06aed401829ead0031a0507ac38dcb",
+      "warning": "No current file offered at this hash"
+    },
+    "androidApkRuntime": {
+      "status": "NOT TESTED / unresolved previous white screen and ANR"
+    },
+    "watchRuntime": {
+      "status": "NOT TESTED / device evidence unavailable"
+    },
+    "dockerProductionRestore": {
+      "status": "NOT TESTED"
+    }
+  }
+}

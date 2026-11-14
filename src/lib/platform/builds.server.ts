@@ -1,3 +1,4 @@
+import { checkDeliveryRevision } from "./delivery.server";
 /**
  * RPK 构建任务（规格第十三章、12.4）。
  *
@@ -166,12 +167,13 @@ async function requestBuild(sql: Sql, userId: string, body: Record<string, unkno
   const projectId = text(body.projectId, 48);
   const owned = (await sql.query("select id from projects where id = $1 and user_id = $2", [projectId, userId]))[0];
   if (!owned) throw notFound("找不到这个工程");
+  const loaded = await loadOwnedDoc(sql, userId, projectId);
+  checkDeliveryRevision(body, loaded.revision, loaded.contentSha256);
   if (deps.flags.build_enabled !== "true") return recordUnavailable(sql, userId, projectId, "RPK 构建暂未开放（后台未开启）。本次不扣 RPK 积分，也不会记成打包成功。");
   const workers = await liveWorkers(sql);
   if (!workers.length) return recordUnavailable(sql, userId, projectId, "当前没有在线的构建 Worker。本次不扣 RPK 积分，也不会记成打包成功。");
 
   // 固定工程修订：只构建服务端已保存的最新修订（客户端提交的内容不参与构建）。
-  const loaded = await loadOwnedDoc(sql, userId, projectId);
   if (loaded.revision < 1) throw new ApiError(400, "工程还没有保存到云端，请先保存再构建");
   const doc = loaded.doc;
 

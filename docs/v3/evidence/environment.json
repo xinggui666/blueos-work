@@ -1,0 +1,17 @@
+{
+  "recordedAt": "2026-11-14T04:13:52.161237-08:00",
+  "timezone": "America/Los_Angeles",
+  "sourceCommit": "58dd16e2fca5e3a5cd06d9d18ef9bff945edb24e",
+  "node": "v24.22.1",
+  "npm": "11.21.1",
+  "os": "Linux",
+  "arch": "x86_64",
+  "database": "isolated local PostgreSQL 17.5; disposable blueos_v3_ fixtures; not production",
+  "webOrigin": "http://localhost:4016",
+  "androidRuntime": "not tested",
+  "watchRuntime": "not tested",
+  "dockerProduction": "not tested",
+  "note": "No credentials recorded; earlier /tmp evidence lost in unexpected runtime reset",
+  "applicationCommit": "0140b230b88c9aaa06186b18884b27912eba4435",
+  "services": "Test Vite :4016 stopped after regressions; only owned PostgreSQL :55433 remains; no external deployment"
+}

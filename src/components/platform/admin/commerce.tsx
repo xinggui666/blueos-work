@@ -49,7 +49,7 @@ const PLAN_FIELDS: [keyof Plan, string][] = [
   ["priceCents", "价格（分）"],
   ["durationDays", "有效天数"],
   ["build", "RPK 打包积分"],
-  ["monthlyBuild", "每月打包积分"],
+  ["monthlyBuild", "月度积分规则（预留，未启用自动发放）"],
   ["bonusBuild", "赠送打包积分"],
   ["export", "工程下载积分"],
   ["generation", "源工程积分"],
@@ -96,7 +96,7 @@ export function PlansTab({ onError }: { onError: (t: string) => void }) {
                 {p.name} · {yuan(p.priceCents)} · {p.durationDays} 天{p.active ? "" : " · 已下架"}
               </p>
               <p className="mt-1 text-muted">
-                打包 {p.build}（每月 {p.monthlyBuild}，赠送 {p.bonusBuild}）· 下载 {p.export} · 源工程 {p.generation} · 工程 {p.projectLimit || "不限"} · {p.storageMb} MB · 并发 {p.concurrency} · 优先级 {p.priority}
+                打包 {p.build}（一次性赠送 {p.bonusBuild}；月度规则 {p.monthlyBuild} 尚未启用）· 下载 {p.export} · 源工程 {p.generation} · 工程 {p.projectLimit || "不限"} · {p.storageMb} MB · 并发 {p.concurrency} · 优先级 {p.priority}
                 {p.categories ? ` · 组件分类 ${p.categories}` : ""}
               </p>
               <div className="mt-2 flex gap-2">

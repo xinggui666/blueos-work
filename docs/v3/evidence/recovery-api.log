@@ -1,0 +1,18 @@
+PASS explicit bootstrap prevents first outsider gaining super_admin
+PASS unverified designated email alone cannot self-promote
+PASS designated bootstrap is unique under concurrent calls
+PASS stale A request with B session rejected before profile/business writes
+PASS future-only membership does not activate now
+PASS concurrent order confirmation grants exactly once
+PASS pending order confirmation uses original snapshot and original grant amounts
+PASS later plan edits cannot change active project/concurrency/priority entitlements
+PASS order and membership snapshots reject direct mutation
+PASS renewed future segment is not current before its start
+PASS refunded future segment cannot activate, repeated refund rejected
+PASS concurrent admin renewals append non-overlapping future intervals
+PASS same/newer app version not forced into same-version update deadlock
+PASS inconsistent minimum/latest release configuration rejected
+PASS delivery requires an explicit confirmed revision (no legacy bypass)
+PASS stale export and build receipts reject before billing or task creation
+PASS fixed revision export is idempotent
+{"pass":17,"fail":0,"environment":"local PostgreSQL + actual HTTP API","base":"http://localhost:4016"}

@@ -1,0 +1,5 @@
+[migrate] applied 0009_membership_credit_activation.sql
+[migrate] done — 1 migration(s) applied.
+PASS nonempty 0008->0009 preserves all prior memberships/order snapshots, every balance and every ledger row
+PASS legacy eager credits are not silently regranted or clawed back, including future segments
+PASS repeated migration is idempotent

@@ -1,0 +1,16 @@
+{
+  "implementationCommit": "c7a1155c06b9d67fc316649cd4a314a797d64880",
+  "recordedAt": "2026-11-14T04:42:38.315791-08:00",
+  "reportZone": "America/Los_Angeles",
+  "node": "v24.22.1",
+  "platform": "Linux x64",
+  "database": "PostgreSQL 17.5, local disposable fixtures only",
+  "apiGreen": "http://localhost:4019",
+  "apiRed": "http://localhost:4018",
+  "browser": "Playwright Chromium with native bridge mocks for Android-web",
+  "apkRuntimeTested": false,
+  "watchTested": false,
+  "dockerTested": false,
+  "productionTested": false,
+  "externalBrokerTested": false
+}

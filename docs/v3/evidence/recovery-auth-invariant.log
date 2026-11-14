@@ -1,0 +1,5 @@
+
+> check:auth
+> node scripts/check-auth-invariant.mjs --dev-url http://localhost:4016
+
+[auth-invariant] dev and build agree: sign-in on

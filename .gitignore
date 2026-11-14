@@ -36,3 +36,9 @@ backups/
 
 __pycache__/
 *.pyc
+
+# Auditable V3 regression evidence (fixture-only; never credentials)
+!/docs/v3/evidence/*.log
+
+# Raw logs from the next bounded V3 security/activation batch
+!/docs/v3/evidence-next/*.log

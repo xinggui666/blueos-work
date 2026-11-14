@@ -7,7 +7,7 @@
  *   npm run test:api       # 或 API_BASE=https://... node scripts/api-smoke.mjs
  *
  * 需要一个管理员账号来发卡密：设置 SMOKE_ADMIN_EMAIL / SMOKE_ADMIN_PASSWORD；
- * 不设置时，假定这是一个空库，第一个注册的账号会成为超级管理员。
+ * V3须先用运维CLI初始化指定测试管理员并设置以上两项；空库不再自动提权。
  */
 import assert from "node:assert/strict";
 
@@ -45,6 +45,10 @@ async function signIn(email, password = PASSWORD) {
 }
 
 async function call(token, action, payload = {}, raw) {
+  if (["exportBundle", "requestBuild"].includes(action) && payload.expectedRevision === undefined) {
+    const latest = await call(token, "getProjectDoc", { projectId: payload.projectId ?? payload.project?.id });
+    if (latest.status === 200) payload = { ...payload, expectedRevision: latest.json.revision };
+  }
   const res = await fetch(`${BASE}/api/v1/platform`, {
     method: "POST",
     headers: { ...H, authorization: `Bearer ${token}` },
@@ -70,9 +74,9 @@ function project(id, type = "text") {
 const health = await fetch(`${BASE}/api/health`).then((r) => r.json()).catch(() => null);
 assert.ok(health?.ok, `服务不可用：${BASE}/api/health`);
 
-const admin = process.env.SMOKE_ADMIN_EMAIL
-  ? await signIn(process.env.SMOKE_ADMIN_EMAIL, process.env.SMOKE_ADMIN_PASSWORD)
-  : await signUp(`admin-${tag}@smoke.local`);
+assert.ok(process.env.SMOKE_ADMIN_EMAIL && process.env.SMOKE_ADMIN_PASSWORD,
+  "V3 requires an explicitly operator-bootstrapped test admin via SMOKE_ADMIN_EMAIL/SMOKE_ADMIN_PASSWORD; no first-signup auto-admin fallback");
+const admin = await signIn(process.env.SMOKE_ADMIN_EMAIL, process.env.SMOKE_ADMIN_PASSWORD);
 const user = await signUp(`user-${tag}@smoke.local`);
 const other = await signUp(`other-${tag}@smoke.local`);
 const pid = (n) => `p${tag}${n}`.replace(/[^a-z0-9]/g, "").padEnd(8, "0").slice(0, 40);

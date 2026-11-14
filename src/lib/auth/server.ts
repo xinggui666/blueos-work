@@ -161,6 +161,15 @@ const grokOAuthPlugin = authConfigured
         authorizationUrl: grokAuthorizationUrl,
         tokenUrl: grokTokenUrl,
         userInfoUrl: grokUserInfoUrl,
+        // Broker UserInfo is OIDC-shaped. Never fall back to mutable email/name.
+        // Audit existing provider/account IDs before a production 1.6 -> 1.7 cutover.
+        accountSubject: ({ profile }) => {
+          const sub = profile?.sub;
+          if ((typeof sub !== "string" && typeof sub !== "number") || !String(sub).trim()) {
+            throw new Error("Broker UserInfo is missing its immutable subject");
+          }
+          return sub;
+        },
         scopes: ["openid", "profile", "email"],
         // `prompt: "login"` forces the broker to re-authenticate against the
         // upstream on every sign-in instead of silently reusing an existing

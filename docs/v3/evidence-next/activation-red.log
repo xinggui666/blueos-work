@@ -1,0 +1,23 @@
+FAIL active segment grants one-time build+bonus, never monthly/daily fields Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
++   build: 15,
+-   build: 6,
+    export: 5,
+    generation: 3
+  }
+
+FAIL confirmed future segment has no grant or balance change before starts_at Expected values to be strictly deep-equal:
++ actual - expected
+
+  {
++   build: 30,
++   export: 10,
++   generation: 6
+-   build: 15,
+-   export: 5,
+-   generation: 3
+  }
+
+{"pass":0,"fail":2,"base":"http://localhost:4018","redOnly":true}

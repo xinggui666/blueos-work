@@ -40,6 +40,8 @@ async function setY(y) {
 try {
   await step("注册并新建工程", async () => {
     await page.goto(`${BASE}/login`);
+    // SSR form visibility alone does not prove that submit handlers are hydrated.
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "注册" }).click();
     await page.getByLabel("名字").fill("e2e");
     await page.getByLabel("邮箱").fill(email);

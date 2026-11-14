@@ -1,0 +1,6 @@
+
+> typecheck
+> tsc --noEmit
+
+src/lib/auth/client.ts(1,10): error TS2305: Module '"better-auth/client/plugins"' has no exported member 'genericOAuthClient'.
+src/lib/auth/popup.server.ts(65,35): error TS2339: Property 'signInWithOAuth2' does not exist on type 'InferAPI<Prettify<{ readonly ok: StrictEndpoint<"/ok", { method: "GET"; metadata: { openapi: { description: string; responses: { "200": { description: string; content: { "application/json": { schema: { type: "object"; properties: { ok: { type: string; description: string; }; }; required: string[]; }; }; }; }; }; }; ...'.

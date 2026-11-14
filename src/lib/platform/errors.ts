@@ -1,5 +1,5 @@
 /** 带 HTTP 状态码的业务错误。消息直接给用户看，不要放内部细节。 */
-export type ApiStatus = 400 | 401 | 403 | 404 | 409 | 413 | 429 | 503;
+export type ApiStatus = 400 | 401 | 403 | 404 | 409 | 413 | 428 | 429 | 503;
 
 export class ApiError extends Error {
   readonly status: ApiStatus;
