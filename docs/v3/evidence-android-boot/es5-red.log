@@ -1,0 +1,21 @@
+file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:3835
+  var err = new SyntaxError(message);
+            ^
+
+SyntaxError: Unexpected token (82:2)
+    at pp$4.raise (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:3835:13)
+    at pp$9.unexpected (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:833:8)
+    at pp$5.parseExprAtomDefault (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:3172:8)
+    at pp$5.parseExprAtom (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:3167:17)
+    at pp$5.parseExprSubscripts (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:2945:19)
+    at pp$5.parseMaybeUnary (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:2897:17)
+    at pp$5.parseExprOps (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:2825:19)
+    at pp$5.parseMaybeConditional (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:2808:19)
+    at pp$5.parseMaybeAssign (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:2774:19)
+    at pp$5.parseExprList (file:///workspace/blueos-work/node_modules/acorn/dist/acorn.mjs:3703:18) {
+  pos: 2802,
+  loc: Position { line: 82, column: 2 },
+  raisedAt: 2803
+}
+
+Node.js v24.22.1

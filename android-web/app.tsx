@@ -1,4 +1,11 @@
-import { StrictMode, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Component,
+  StrictMode,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { createRoot } from "react-dom/client";
 import {
   Link,
@@ -21,7 +28,16 @@ import { AccountView } from "@/components/platform/account-view";
 import { JobsView } from "@/components/platform/jobs-view";
 import { DeveloperView } from "@/components/platform/developer-view";
 import { useStudio } from "@/lib/blueos/store";
-import { appInfo, currentSession, installUpdate, loadSession, native, onNative, signIn, subscribeSession } from "./bridge";
+import {
+  appInfo,
+  currentSession,
+  installUpdate,
+  loadSession,
+  native,
+  onNative,
+  signIn,
+  subscribeSession,
+} from "./bridge";
 
 /* ---------- 网络状态 ---------- */
 
@@ -70,7 +86,16 @@ function startNetworkWatch() {
 
 /* ---------- 版本更新 ---------- */
 
-type Release = { versionName: string; versionCode: number; notes: string; apkUrl: string; sha256: string; sizeBytes: number; downloadable: boolean; force: boolean };
+type Release = {
+  versionName: string;
+  versionCode: number;
+  notes: string;
+  apkUrl: string;
+  sha256: string;
+  sizeBytes: number;
+  downloadable: boolean;
+  force: boolean;
+};
 type ReleaseCheck = { update: boolean; force: boolean; release: Release | null };
 
 const CHANNEL_KEY = "bw-update-channel";
@@ -79,7 +104,11 @@ function channel(): "stable" | "beta" {
 }
 
 function checkRelease(): Promise<ReleaseCheck> {
-  return call<ReleaseCheck>("releaseCheck", { versionCode: appInfo().versionCode, channel: channel() }, "android");
+  return call<ReleaseCheck>(
+    "releaseCheck",
+    { versionCode: appInfo().versionCode, channel: channel() },
+    "android",
+  );
 }
 
 function UpdateGate({ children }: { children: ReactNode }) {
@@ -96,17 +125,34 @@ function UpdateGate({ children }: { children: ReactNode }) {
       live = false;
     };
   }, [isOnline]);
-  if (check?.force && check.update && check.release && check.release.versionCode > appInfo().versionCode && !hidden) {
+  if (
+    check?.force &&
+    check.update &&
+    check.release &&
+    check.release.versionCode > appInfo().versionCode &&
+    !hidden
+  ) {
     return (
       <main className="grid min-h-dvh place-items-center px-6">
         <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5">
           <p className="text-lg font-semibold">需要更新</p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            当前版本 {appInfo().versionName} 已停止支持，请更新到 {check.release.versionName}。{check.release.notes}
+            当前版本 {appInfo().versionName} 已停止支持，请更新到 {check.release.versionName}。
+            {check.release.notes}
           </p>
           <UpdateButton release={check.release} />
-          <button type="button" className="mt-4 min-h-11 text-sm text-accent" onClick={() => { setHidden(true); }}>更新失败或暂时无法安装：返回本机工作空间</button>
-          <p className="mt-2 text-xs text-muted">继续使用不绕过服务器权限。请稍后在设置中重试更新。</p>
+          <button
+            type="button"
+            className="mt-4 min-h-11 text-sm text-accent"
+            onClick={() => {
+              setHidden(true);
+            }}
+          >
+            更新失败或暂时无法安装：返回本机工作空间
+          </button>
+          <p className="mt-2 text-xs text-muted">
+            继续使用不绕过服务器权限。请稍后在设置中重试更新。
+          </p>
         </div>
       </main>
     );
@@ -135,7 +181,12 @@ function UpdateGate({ children }: { children: ReactNode }) {
 function UpdateButton({ release }: { release: Release }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
-  if (!release.downloadable) return <p className="mt-3 text-sm text-warn">这个版本还没有可下载的安装包（缺少下载地址或 SHA-256），暂时不能更新。</p>;
+  if (!release.downloadable)
+    return (
+      <p className="mt-3 text-sm text-warn">
+        这个版本还没有可下载的安装包（缺少下载地址或 SHA-256），暂时不能更新。
+      </p>
+    );
   return (
     <div className="mt-3">
       <button
@@ -177,10 +228,17 @@ function RequireUser({ children }: { children: ReactNode }) {
 function StatusBar() {
   const isOnline = useOnline();
   const cloud = useCloud();
-  const text = !isOnline ? "离线：可以编辑已缓存的工程，联网后自动同步；构建、下载和组件授权需要联网" : cloud.status === "error" ? cloud.detail : "";
+  const text = !isOnline
+    ? "离线：可以编辑已缓存的工程，联网后自动同步；构建、下载和组件授权需要联网"
+    : cloud.status === "error"
+      ? cloud.detail
+      : "";
   if (!text) return null;
   return (
-    <p data-testid="net-status" className={`border-b border-line px-4 py-2 text-xs ${isOnline ? "bg-white text-warn" : "bg-amber-50 text-amber-800"}`}>
+    <p
+      data-testid="net-status"
+      className={`border-b border-line px-4 py-2 text-xs ${isOnline ? "bg-white text-warn" : "bg-amber-50 text-amber-800"}`}
+    >
       {text}
     </p>
   );
@@ -194,11 +252,18 @@ function Frame({ children }: { children: ReactNode }) {
         <div className="min-h-dvh pb-20">
           <StatusBar />
           {children}
-          <nav className="glass fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <nav
+            className="glass fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
             {TABS.map((tab) => {
               const active = tab.to === "/" ? path === "/" : path.startsWith(tab.to);
               return (
-                <Link key={tab.to} to={tab.to as never} className={`flex min-h-14 items-center justify-center text-sm ${active ? "font-semibold text-accent" : "text-muted"}`}>
+                <Link
+                  key={tab.to}
+                  to={tab.to as never}
+                  className={`flex min-h-14 items-center justify-center text-sm ${active ? "font-semibold text-accent" : "text-muted"}`}
+                >
                   {tab.label}
                 </Link>
               );
@@ -245,34 +310,78 @@ function LoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-3 px-6 py-10">
       <p className="text-2xl font-semibold tracking-tight">BlueOS 工坊</p>
-      <p className="text-sm text-muted">{session.expired ? "登录已过期，请重新登录。本机工程都还在。" : "登录后工程会同步到云端，也能离线编辑。"}</p>
+      <p className="text-sm text-muted">
+        {session.expired
+          ? "登录已过期，请重新登录。本机工程都还在。"
+          : "登录后工程会同步到云端，也能离线编辑。"}
+      </p>
       <div className="mt-2 grid grid-cols-2 rounded-full bg-white p-1 text-sm">
-        <button type="button" className={`min-h-10 rounded-full ${mode === "in" ? "bg-accent text-accent-fg" : ""}`} onClick={() => setMode("in")}>
+        <button
+          type="button"
+          className={`min-h-10 rounded-full ${mode === "in" ? "bg-accent text-accent-fg" : ""}`}
+          onClick={() => setMode("in")}
+        >
           登录
         </button>
-        <button type="button" className={`min-h-10 rounded-full ${mode === "up" ? "bg-accent text-accent-fg" : ""}`} onClick={() => setMode("up")}>
+        <button
+          type="button"
+          className={`min-h-10 rounded-full ${mode === "up" ? "bg-accent text-accent-fg" : ""}`}
+          onClick={() => setMode("up")}
+        >
           注册
         </button>
       </div>
       <label className="text-sm">
         服务器地址
-        <input aria-label="服务器地址" className={field} inputMode="url" autoCapitalize="none" placeholder="https://你的服务器" value={base} onChange={(e) => setBase(e.target.value)} />
+        <input
+          aria-label="服务器地址"
+          className={field}
+          inputMode="url"
+          autoCapitalize="none"
+          placeholder="https://你的服务器"
+          value={base}
+          onChange={(e) => setBase(e.target.value)}
+        />
       </label>
       {mode === "up" ? (
         <label className="text-sm">
           昵称
-          <input aria-label="昵称" className={field} value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            aria-label="昵称"
+            className={field}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </label>
       ) : null}
       <label className="text-sm">
         邮箱
-        <input aria-label="邮箱" className={field} type="email" autoCapitalize="none" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          aria-label="邮箱"
+          className={field}
+          type="email"
+          autoCapitalize="none"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       </label>
       <label className="text-sm">
         密码
-        <input aria-label="密码" className={field} type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void submit()} />
+        <input
+          aria-label="密码"
+          className={field}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void submit()}
+        />
       </label>
-      <button type="button" disabled={busy} className="mt-2 min-h-12 rounded-md bg-accent text-base font-semibold text-accent-fg disabled:opacity-60" onClick={() => void submit()}>
+      <button
+        type="button"
+        disabled={busy}
+        className="mt-2 min-h-12 rounded-md bg-accent text-base font-semibold text-accent-fg disabled:opacity-60"
+        onClick={() => void submit()}
+      >
         {busy ? "请稍候…" : mode === "up" ? "注册并登录" : "登录"}
       </button>
       {error ? (
@@ -316,6 +425,10 @@ function SettingsPage() {
         <p>
           版本：{info.versionName}（{info.versionCode}）{info.debug ? " · 调试包" : ""}
         </p>
+        <p>
+          诊断：Android API {info.sdk} · WebView {info.webViewVersion || "未知"} · Bridge{" "}
+          {info.bridgeVersion || "legacy"}
+        </p>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -336,7 +449,13 @@ function SettingsPage() {
             checkRelease()
               .then((value) => {
                 setCheck(value);
-                setNote(value.release ? (value.update ? `有新版本 ${value.release.versionName}` : "已是最新版本") : "服务器还没有发布任何版本");
+                setNote(
+                  value.release
+                    ? value.update
+                      ? `有新版本 ${value.release.versionName}`
+                      : "已是最新版本"
+                    : "服务器还没有发布任何版本",
+                );
               })
               .catch((error) => setNote(errorText(error)));
           }}
@@ -385,19 +504,20 @@ function EditorPage() {
   return (
     <RequireUser>
       <UpdateGate>
-      <StatusBar />
-      <div className="flex h-dvh flex-col">
-        <div className="min-h-0 flex-1">
-          <EditorView projectId={id} />
+        <StatusBar />
+        <div className="flex h-dvh flex-col">
+          <div className="min-h-0 flex-1">
+            <EditorView projectId={id} />
+          </div>
         </div>
-      </div>
       </UpdateGate>
     </RequireUser>
   );
 }
 
 const rootRoute = createRootRoute({ component: Root });
-const page = (path: string, element: () => ReactNode) => createRoute({ getParentRoute: () => rootRoute, path, component: element });
+const page = (path: string, element: () => ReactNode) =>
+  createRoute({ getParentRoute: () => rootRoute, path, component: element });
 const routeTree = rootRoute.addChildren([
   page("/", () => (
     <Frame>
@@ -427,7 +547,9 @@ const routeTree = rootRoute.addChildren([
   )),
   page("/admin", () => (
     <Frame>
-      <p className="px-4 py-10 text-center text-sm text-muted">管理后台请在网页端打开（{currentSession().base}/admin）。</p>
+      <p className="px-4 py-10 text-center text-sm text-muted">
+        管理后台请在网页端打开（{currentSession().base}/admin）。
+      </p>
     </Frame>
   )),
   page("/settings", () => (
@@ -438,12 +560,50 @@ const routeTree = rootRoute.addChildren([
   page("/login", () => <LoginPage />),
 ]);
 
+function RouteFailure() {
+  useEffect(() => {
+    window.__bwBoot?.fail("RENDER");
+  }, []);
+  return null;
+}
+
+class BootBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    window.__bwBoot?.fail("RENDER");
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+function BootReady({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    if (window.__bwBoot) window.__bwBoot.ready();
+    else {
+      const panel = document.getElementById("bw-boot");
+      if (panel) panel.hidden = true;
+    }
+  }, []);
+  return children;
+}
+
 export function mount(root: HTMLElement) {
   startNetworkWatch();
-  const router = createRouter({ routeTree, history: createHashHistory() });
+  const router = createRouter({
+    routeTree,
+    history: createHashHistory(),
+    defaultErrorComponent: RouteFailure,
+  });
   createRoot(root).render(
     <StrictMode>
-      <RouterProvider router={router} />
+      <BootBoundary>
+        <BootReady>
+          <RouterProvider router={router} />
+        </BootReady>
+      </BootBoundary>
     </StrictMode>,
   );
 }

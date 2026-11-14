@@ -1,22 +1,29 @@
 import "@/styles.css";
 import { hasNative, loadSession, saveFile } from "./bridge";
 
-
-/**
- * 启动顺序很重要：先按当前登录用户切换本机缓存，再加载编辑器状态（zustand persist 在模块加载时读 localStorage）。
- * 所以 app 模块用动态 import，保证切换发生在前面。
- */
-function boot() {
-  const root = document.getElementById("root")!;
-  if (!hasNative()) {
-    root.innerHTML = '<p style="padding:24px;font:14px sans-serif">这个页面只能在 BlueOS 工坊 Android 客户端里运行。</p>';
-    return;
+async function boot() {
+  try {
+    if (!hasNative()) throw new Error("native bridge missing");
+    if (typeof structuredClone !== "function") {
+      window.__bwBoot?.fail("UNSUPPORTED");
+      return;
+    }
+    loadSession(); // Must validate identity before the persisted editor is imported.
+    (globalThis as { __bwSaveFile?: typeof saveFile }).__bwSaveFile = saveFile;
+    let app;
+    try {
+      app = await import("./app");
+    } catch {
+      window.__bwBoot?.fail("APP_CHUNK");
+      return;
+    }
+    app.mount(document.getElementById("root")!);
+  } catch (error) {
+    window.__bwBoot?.fail(
+      error instanceof Error && "code" in error && error.code === "BW_BRIDGE_V1_SESSION"
+        ? "SESSION"
+        : "STARTUP",
+    );
   }
-  const session = loadSession();
-  // Shared CloudSync selects origin + user before any persisted editor data is shown.
-  void session;
-  (globalThis as { __bwSaveFile?: typeof saveFile }).__bwSaveFile = (name, mime, base64) => saveFile(name, mime, base64);
-  void import("./app").then(({ mount }) => mount(root));
 }
-
-boot();
+void boot();

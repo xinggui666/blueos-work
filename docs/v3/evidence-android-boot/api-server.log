@@ -1,0 +1,48 @@
+
+> dev
+> node scripts/with-app-env.mjs vite dev --host 127.0.0.1 --port 4020
+
+
+  VITE v8.3.4  ready in 1036 ms
+
+  ➜  Local:   http://127.0.0.1:4020/
+8:56:01 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:56:01 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:57:29 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:57:29 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+8:58:07 PM [vite] (ssr) connected.
+2026-11-14T12:58:10.009Z ERROR [Better Auth]: Invalid origin: https://untrusted.invalid
+2026-11-14T12:58:10.524Z WARN [Better Auth]: Invalid password
+2026-11-14T12:58:10.822Z ERROR [Better Auth]: Provider not found. Make sure to add the provider in your auth config { provider: 'unconfigured-fixture' }
+2026-11-14T12:58:10.834Z ERROR [Better Auth]: Failed to parse state [StateError [BetterAuthError]: State mismatch: verification not found] {
+  code: 'state_mismatch',
+  details: { state: 'invalid-fixture' },
+  errorURL: undefined
+}
+9:01:44 PM [vite] (client) page reload android-web/index.html
+9:01:52 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:01:52 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/index.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.RulesTest.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SessionGuardTest.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SigningPolicyTest.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/packages/icu.liuhua.workshop.html
+9:02:04 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SessionGuardTest.html
+9:02:04 PM [vite] (client) page reload android/app/build/intermediates/assets/debug/mergeDebugAssets/www/index.html
+9:02:05 PM [vite] (client) page reload android/app/build/intermediates/assets/release/mergeReleaseAssets/www/index.html
+9:03:59 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:03:59 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:04:54 PM [vite] (client) page reload android/app/build/intermediates/assets/debug/mergeDebugAssets/www/index.html
+9:04:55 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/index.html
+9:04:55 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.RulesTest.html
+9:04:55 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SessionGuardTest.html
+9:04:55 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SigningPolicyTest.html
+9:04:55 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/packages/icu.liuhua.workshop.html
+9:04:57 PM [vite] (client) page reload android/app/build/intermediates/assets/release/mergeReleaseAssets/www/index.html
+9:10:22 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:10:22 PM [vite] (client) page reload android/app/src/main/assets/www/index.html
+9:12:48 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/index.html
+9:12:48 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/packages/icu.liuhua.workshop.html
+9:12:48 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.RulesTest.html
+9:12:48 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SessionGuardTest.html
+9:12:48 PM [vite] (client) page reload android/app/build/reports/tests/testDebugUnitTest/classes/icu.liuhua.workshop.SigningPolicyTest.html

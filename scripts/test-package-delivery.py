@@ -27,4 +27,12 @@ class DeliveryTests(unittest.TestCase):
             with zipfile.ZipFile(p,'w') as z: z.writestr('blueos-work/android/debug.keystore','public debug fixture')
             with self.assertRaises(RuntimeError): delivery.audit_zip(p)
 
+    def test_actual_apk_version_not_old_hardcoded_label(self):
+        meta = delivery.parse_apk_badging("package: name='icu.liuhua.workshop' versionCode='11' versionName='1.0.1' platformBuildVersionName='14'")
+        self.assertEqual(meta, {'packageName':'icu.liuhua.workshop','versionCode':11,'versionName':'1.0.1'})
+    def test_bad_or_path_like_apk_version_rejected(self):
+        for text in ['', "package: name='icu.liuhua.workshop' versionCode='11' versionName='../bad'", "package: name='x' versionCode='oops' versionName='1.0'"]:
+            with self.subTest(text=text):
+                with self.assertRaises(RuntimeError): delivery.parse_apk_badging(text)
+
 if __name__ == '__main__': unittest.main()

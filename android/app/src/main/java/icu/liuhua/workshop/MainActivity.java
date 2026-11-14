@@ -2,6 +2,7 @@ package icu.liuhua.workshop;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -15,12 +16,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.view.ViewGroup;
+import android.view.ViewParent;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,6 +41,8 @@ public class MainActivity extends Activity {
     private static final int REQ_OPEN = 42;
 
     private WebView web;
+    private NativeBridge bridge;
+    private AlertDialog recoveryDialog;
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
     private ValueCallback<Uri[]> pendingChooser;
@@ -72,7 +79,8 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setSupportMultipleWindows(false);
         settings.setTextZoom(100);
-        web.addJavascriptInterface(new NativeBridge(this), "BlueOSNative");
+        bridge = new NativeBridge(this);
+        web.addJavascriptInterface(bridge, "BlueOSNative");
         web.setWebViewClient(new AppClient());
         web.setWebChromeClient(new Chrome());
         setContentView(web);
@@ -80,14 +88,40 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(installStatus, filter, Context.RECEIVER_NOT_EXPORTED);
         else registerReceiver(installStatus, filter);
         watchNetwork();
-        if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(AssetRoutes.START_URL);
+        boolean restored = savedInstanceState != null && web.restoreState(savedInstanceState) != null;
+        Uri restoredUrl = restored && web.getUrl() != null ? Uri.parse(web.getUrl()) : null;
+        if (!restored || restoredUrl == null || AssetRoutes.assetPath(restoredUrl.getScheme(), restoredUrl.getHost(), restoredUrl.getPath()) == null) web.loadUrl(AssetRoutes.START_URL);
+    }
+
+    /** Only clears HTTP resource cache; NEVER DOM storage, app data, preferences or user drafts. */
+    void reloadBundledApp() {
+        runOnUiThread(() -> {
+            if (web == null) { recreate(); return; }
+            if (bridge != null) bridge.cancelPendingLogin();
+            web.clearCache(true);
+            web.loadUrl(AssetRoutes.START_URL + "?bw_boot_retry=" + System.currentTimeMillis());
+        });
+    }
+
+    private void destroyWebView(WebView view) {
+        ViewParent parent = view.getParent();
+        if (parent instanceof ViewGroup) ((ViewGroup) parent).removeView(view);
+        view.destroy();
+        if (web == view) web = null;
+    }
+
+    private void showRecovery(String code) {
+        if (isFinishing() || isDestroyed() || (recoveryDialog != null && recoveryDialog.isShowing())) return;
+        recoveryDialog = new AlertDialog.Builder(this).setTitle("工坊界面加载失败")
+            .setMessage(code + "\n本机已保存草稿和登录信息未清除。请保留数据重试；不要清除应用数据。")
+            .setPositiveButton("保留数据重试", (dialog, which) -> reloadBundledApp())
+            .setNegativeButton("退出（保留数据）", (dialog, which) -> finish()).setCancelable(false).show();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        web.saveState(outState);
+        if (web != null) web.saveState(outState);
     }
 
     @Override
@@ -102,14 +136,16 @@ public class MainActivity extends Activity {
             unregisterReceiver(installStatus);
         } catch (Exception ignored) {
         }
-        if (networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);
-        web.destroy();
+        try { if (networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback); } catch (Exception alreadyUnregistered) { /* Lifecycle cleanup must continue. */ }
+        if (recoveryDialog != null) recoveryDialog.dismiss();
+        if (web != null) destroyWebView(web);
+        if (bridge != null) bridge.close();
         super.onDestroy();
     }
 
     @Override
     public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
+        if (web != null && web.canGoBack()) web.goBack();
         else super.onBackPressed();
     }
 
@@ -136,12 +172,12 @@ public class MainActivity extends Activity {
     }
 
     void resolve(String id, int status, String body) {
-        runOnUiThread(() -> web.evaluateJavascript(Js.resolve(id, status, body), null));
+        runOnUiThread(() -> { if (web != null && !isDestroyed()) web.evaluateJavascript(Js.resolve(id, status, body), null); });
     }
 
     void emit(String name, String json) {
         runOnUiThread(() -> {
-            if (web != null) web.evaluateJavascript(Js.emit(name, json), null);
+            if (web != null && !isDestroyed()) web.evaluateJavascript(Js.emit(name, json), null);
         });
     }
 
@@ -211,13 +247,27 @@ public class MainActivity extends Activity {
                 InputStream in = getAssets().open(path);
                 WebResourceResponse response = new WebResourceResponse(AssetRoutes.mime(path), "utf-8", in);
                 Map<String, String> headers = new HashMap<>();
-                headers.put("Cache-Control", path.endsWith("index.html") ? "no-cache" : "max-age=31536000, immutable");
+                headers.put("Cache-Control", (path.endsWith("index.html") || path.endsWith("boot.js")) ? "no-cache" : "max-age=31536000, immutable");
                 headers.put("X-Content-Type-Options", "nosniff");
                 response.setResponseHeaders(headers);
                 return response;
             } catch (Exception missing) {
                 return notFound();
             }
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            if (request.isForMainFrame()) showRecovery("BW_BOOT_V1_NATIVE_RESOURCE");
+        }
+
+        @Override
+        public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+            // A dead renderer cannot be reloaded. Destroy it and recreate the Activity on explicit retry.
+            if (bridge != null) bridge.cancelPendingLogin();
+            destroyWebView(view);
+            showRecovery("BW_BOOT_V1_RENDERER_GONE");
+            return true;
         }
 
         private WebResourceResponse notFound() {

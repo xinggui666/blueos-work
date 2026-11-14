@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -40,8 +41,9 @@ final class UpdateInstaller {
             activity.resolve(id, 400, "版本信息缺少 SHA-256，不能安装");
             return;
         }
-        File file = new File(activity.getCacheDir(), "update.apk");
+        File file = null;
         try {
+            file = File.createTempFile("blueos-update-", ".apk", activity.getCacheDir());
             download(url, file);
             String actual;
             try (InputStream in = new FileInputStream(file)) {
@@ -53,11 +55,16 @@ final class UpdateInstaller {
                 return;
             }
             PackageManager pm = activity.getPackageManager();
-            PackageInfo info = pm.getPackageArchiveInfo(file.getPath(), 0);
+            int flags = Build.VERSION.SDK_INT >= 28 ? PackageManager.GET_SIGNING_CERTIFICATES : PackageManager.GET_SIGNATURES;
+            PackageInfo info = pm.getPackageArchiveInfo(file.getPath(), flags);
             if (info == null || !activity.getPackageName().equals(info.packageName)) {
                 file.delete();
                 activity.resolve(id, 400, "安装包不是本应用，已删除");
                 return;
+            }
+            PackageInfo current = pm.getPackageInfo(activity.getPackageName(), flags);
+            if (!SigningPolicy.sameSigners(signers(current), signers(info))) {
+                file.delete(); activity.resolve(id, 400, "安装包签名与当前应用不一致，已删除，没有安装"); return;
             }
             long newCode = Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
             if (newCode <= BuildConfig.VERSION_CODE) {
@@ -67,15 +74,25 @@ final class UpdateInstaller {
             }
             if (Build.VERSION.SDK_INT >= 26 && !pm.canRequestPackageInstalls()) {
                 activity.runOnUiThread(() -> activity.startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + activity.getPackageName()))));
-                activity.resolve(id, 409, "请在系统设置里允许本应用安装更新，然后回来再点一次（安装包已下载并校验通过）");
+                activity.resolve(id, 409, "请在系统设置里允许本应用安装更新，然后回来重新下载并校验（本次临时文件将清理）");
                 return;
             }
             commit(file);
             activity.resolve(id, 200, "SHA-256 校验通过，已交给系统安装，请按系统提示完成");
         } catch (Exception error) {
-            file.delete();
-            activity.resolve(id, 0, "下载更新失败：" + error.getMessage());
+            activity.resolve(id, 0, "更新处理失败（BW_UPDATE_V1_FAILED），请检查网络、存储和安装权限后重试");
+        } finally {
+            if (file != null) file.delete();
         }
+    }
+
+    private byte[][] signers(PackageInfo info) {
+        Signature[] signatures = Build.VERSION.SDK_INT >= 28
+            ? (info.signingInfo == null ? null : info.signingInfo.getApkContentsSigners()) : info.signatures;
+        if (signatures == null) return null;
+        byte[][] out = new byte[signatures.length][];
+        for (int i = 0; i < signatures.length; i++) out[i] = signatures[i].toByteArray();
+        return out;
     }
 
     private void download(String url, File file) throws Exception {
@@ -83,11 +100,12 @@ final class UpdateInstaller {
         connection.setConnectTimeout(15000);
         connection.setReadTimeout(60000);
         connection.setInstanceFollowRedirects(true);
-        int code = connection.getResponseCode();
-        if (code != 200) throw new IllegalStateException("HTTP " + code);
-        String finalUrl = connection.getURL().toString();
-        if (!UrlRules.downloadAllowed(finalUrl, allowHttp)) throw new IllegalStateException("跳转到了不安全的地址");
-        try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(file)) {
+        try {
+          int code = connection.getResponseCode();
+          if (code != 200) throw new IllegalStateException("HTTP " + code);
+          String finalUrl = connection.getURL().toString();
+          if (!UrlRules.downloadAllowed(finalUrl, allowHttp)) throw new IllegalStateException("跳转到了不安全的地址");
+          try (InputStream in = connection.getInputStream(); OutputStream out = new FileOutputStream(file)) {
             byte[] buffer = new byte[64 * 1024];
             int read;
             long total = 0;
@@ -96,6 +114,7 @@ final class UpdateInstaller {
                 if (total > 300L * 1024 * 1024) throw new IllegalStateException("安装包过大");
                 out.write(buffer, 0, read);
             }
+          }
         } finally {
             connection.disconnect();
         }

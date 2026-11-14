@@ -1,0 +1,21 @@
+
+> typecheck
+> tsc --noEmit
+
+android-web/public/boot.js(4,66): error TS7034: Variable 'timer' implicitly has type 'any' in some locations where its type cannot be determined.
+android-web/public/boot.js(13,17): error TS7006: Parameter 'code' implicitly has an 'any' type.
+android-web/public/boot.js(14,10): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ APP_CHUNK: string; ENTRY_LOAD: string; STARTUP: string; SESSION: string; TIMEOUT: string; RENDER: string; }'.
+android-web/public/boot.js(15,18): error TS7005: Variable 'timer' implicitly has an 'any' type.
+android-web/public/boot.js(15,41): error TS18047: 'panel' is possibly 'null'.
+android-web/public/boot.js(15,63): error TS18047: 'panel' is possibly 'null'.
+android-web/public/boot.js(16,5): error TS2531: Object is possibly 'null'.
+android-web/public/boot.js(17,5): error TS2531: Object is possibly 'null'.
+android-web/public/boot.js(17,62): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ APP_CHUNK: string; ENTRY_LOAD: string; STARTUP: string; SESSION: string; TIMEOUT: string; RENDER: string; }'.
+android-web/public/boot.js(18,5): error TS2531: Object is possibly 'null'.
+android-web/public/boot.js(19,5): error TS2531: Object is possibly 'null'.
+android-web/public/boot.js(22,32): error TS7005: Variable 'timer' implicitly has an 'any' type.
+android-web/public/boot.js(22,40): error TS18047: 'panel' is possibly 'null'.
+android-web/public/boot.js(23,49): error TS18047: 'root' is possibly 'null'.
+android-web/public/boot.js(23,86): error TS18047: 'root' is possibly 'null'.
+android-web/public/boot.js(29,26): error TS2339: Property 'tagName' does not exist on type 'EventTarget'.
+android-web/public/boot.js(33,3): error TS2531: Object is possibly 'null'.

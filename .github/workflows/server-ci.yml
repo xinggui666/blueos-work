@@ -22,7 +22,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U blueos -d blueos"
+          --health-cmd "pg_isready -U blueos -d blueos_ci"
           --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       DATABASE_URL: postgres://blueos:blueos-ci@127.0.0.1:5432/blueos_ci
