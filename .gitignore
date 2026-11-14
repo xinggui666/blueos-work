@@ -42,3 +42,6 @@ __pycache__/
 
 # Raw logs from the next bounded V3 security/activation batch
 !/docs/v3/evidence-next/*.log
+
+# V3 Android recovery raw evidence (no private signing/configuration files).
+!/docs/v3/evidence-android-boot/*.log

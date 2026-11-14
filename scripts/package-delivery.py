@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -86,6 +87,21 @@ def write_deploy(out):
         add(ROOT / 'deploy/nginx.conf.example', 'deploy/nginx.conf.example')
     audit_zip(target)
 
+def parse_apk_badging(text):
+    match = re.search(r"^package: name='([^']+)' versionCode='([0-9]+)' versionName='([^']+)'", text, re.M)
+    if not match or not re.fullmatch(r'[A-Za-z0-9._+-]+', match[3]):
+        raise RuntimeError('missing or unsafe actual APK version metadata')
+    return {'packageName': match[1], 'versionCode': int(match[2]), 'versionName': match[3]}
+
+def apk_metadata(apk, sdk):
+    tool = shutil.which('aapt')
+    if not tool:
+        candidates = sorted(sdk.glob('build-tools/*/aapt'))
+        tool = str(candidates[-1]) if candidates else None
+    if not tool:
+        raise RuntimeError('aapt required: never guess APK version from an old filename')
+    return parse_apk_badging(subprocess.check_output([tool, 'dump', 'badging', str(apk)], text=True))
+
 def main():
     out = Path(sys.argv[1] if len(sys.argv) > 1 else '/workspace/deliverables').resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -99,7 +115,13 @@ def main():
         signer = str(candidates[-1]) if candidates else None
     if not signer:
         raise RuntimeError('apksigner required for release verification')
-    subprocess.run([signer, 'verify', str(apk)], check=True)
+    cert_report = subprocess.check_output([signer, 'verify', '--print-certs', str(apk)], text=True)
+    cert = re.search(r'Signer #1 certificate SHA-256 digest: ([0-9a-fA-F]+)', cert_report)
+    if not cert or cert[1].lower() != '0f885077fb73915c0256b283d90eac28d2e0a08e27d374ba1ae956f615620482':
+        raise RuntimeError('Release signer continuity failed; never substitute a replacement key')
+    meta = apk_metadata(apk, sdk)
+    if meta['packageName'] != 'icu.liuhua.workshop':
+        raise RuntimeError('unexpected Release package identity')
     samples = Path(os.environ.get('RPK_SAMPLE_DIR', str(out / 'rpk-sample'))).resolve()
     subprocess.run(['node', str(ROOT / 'scripts/verify-samples.mjs'), str(samples)], check=True)
     sample_dest = out / 'rpk-sample'
@@ -112,12 +134,12 @@ def main():
     for kind in ['release', 'debug']:
         p = ROOT / f'android/app/build/outputs/apk/{kind}/app-{kind}.apk'
         if p.exists():
-            shutil.copy2(p, out / f'blueos-workshop-1.0.0-{kind}.apk')
+            shutil.copy2(p, out / f"blueos-workshop-{meta['versionName']}-{kind}.apk")
     for doc in ['15-Android测试报告.md', '16-多端与第十九章验收.md', '17-最终交付与部署.md']:
         shutil.copy2(ROOT / 'docs' / doc, out / doc)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     (out / 'DELIVERY.json').write_text(json.dumps({
-        'revision': revision, 'androidVersion': '1.0.0', 'androidVersionCode': 10,
+        'revision': revision, 'androidVersion': meta['versionName'], 'androidVersionCode': meta['versionCode'],
         'builtAt': datetime.now(ZoneInfo('America/Los_Angeles')).isoformat(),
         'status': 'release-candidate; Android native runtime, BlueOS watch and production deployment gates OPEN',
         'excluded': ['node_modules', 'signing keys/passwords', '.env', 'backups'],
@@ -129,7 +151,7 @@ def main():
 - server-source.zip：完整服务端/网页源码，不含 android/。
 - android-source.zip：完整 Android Studio 宿主 + android-web + 共享 src/、Node 构建配置等跟踪源码；需 npm ci + npm run build:android-web 再 Gradle 构建。
 - server-deploy.zip：Nitro node-server 产物、迁移、锁定 pg 安装清单、Worker、脚本和文档；先 npm ci --omit=dev，按 README-部署.md 配置。无 node_modules。
-- blueos-workshop-1.0.0-release.apk：正式签名；证书 SHA-256 0f885077fb73915c0256b283d90eac28d2e0a08e27d374ba1ae956f615620482。Debug 为 .debug 包名且仅它允许 http。
+- blueos-workshop-{meta['versionName']}-release.apk：正式签名，versionCode {meta['versionCode']}；与原证书 SHA-256 {cert[1].lower()} 一致。Debug 为 .debug 包名且仅它允许 http。
 - rpk-sample/：官方工具链编译的真实示例 RPK；未真机验证。
 - DELIVERY.json / SHA256SUMS.txt：精确修订/版本与全部交付文件哈希。`sha256sum -c SHA256SUMS.txt`。
 - 若目录保留旧 0.1.0 APK，它们仅为历史壳，不是本次最终客户端。

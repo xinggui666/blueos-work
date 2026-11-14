@@ -50,7 +50,7 @@ function noRemoteFonts(): Plugin {
 export default defineConfig({
   root: resolve(root, "android-web"),
   base: "./",
-  publicDir: false,
+  publicDir: "public",
   resolve: { alias: { "@": resolve(root, "src") } },
   define: {
     "import.meta.env.VITE_AUTH_ENABLED": JSON.stringify("true"),

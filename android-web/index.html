@@ -8,7 +8,17 @@
     <title>BlueOS 工坊</title>
   </head>
   <body>
-    <div id="root"></div>
+    <section id="bw-boot" role="status" style="position:fixed;inset:0;z-index:99999;background:#fff;color:#171717;padding:28px;font:16px sans-serif;overflow:auto">
+      <h1 id="bw-boot-title">正在启动 BlueOS 工坊</h1>
+      <p id="bw-boot-message">正在加载安装包内的编辑器。若长时间没有响应，可保留数据重新载入；请勿清除应用数据。</p>
+      <p id="bw-boot-code">BW_BOOT_V1_LOADING</p>
+      <p id="bw-boot-env">版本诊断尚未就绪；不会读取工程内容或登录令牌。</p>
+      <p>重新加载不会主动删除本机已保存草稿或登录信息；尚未保存的界面状态可能丢失。</p>
+      <a id="bw-boot-retry" href="./index.html?bw_boot_retry=1">保留数据重新载入</a>
+      <noscript>系统 WebView 未启用 JavaScript，无法启动编辑器。请更新系统 WebView；不要清除应用数据。</noscript>
+    </section>
+    <div id="root" aria-busy="true"></div>
+    <script src="./boot.js"></script>
     <script type="module" src="./main.tsx"></script>
   </body>
 </html>
