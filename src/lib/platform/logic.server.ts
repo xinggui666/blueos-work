@@ -402,13 +402,22 @@ async function exportBundle(sql: Sql, actor: Actor, input: Record<string, unknow
     }
     if (!done?.id) throw new Error("导出任务占位失败");
     const jobId = String(done.id);
-    if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
-    await commitQuota(tx, userId, "export", jobId);
+    // Artifact format changed, not the user's purchase: carry forward same-content historical entitlement.
+    const legacy = await one<Row>(tx,
+      "select id, status, exported, artifact from jobs where user_id=$1 and idempotency_key=$2 and kind='export' for update",
+      [userId, `bproj2:${doc.project.id}:${digest}`]);
+    const previouslyPaid = Boolean(legacy?.status === "succeeded" && legacy.exported && legacy.artifact);
+    if (!previouslyPaid) {
+      if (!(await reserve(tx, userId, "export", jobId))) throw new ApiError(400, "项目工程下载积分不足，请先获取工程下载积分");
+      await commitQuota(tx, userId, "export", jobId);
+    } else {
+      await audit(tx, userId, "export.format-upgrade", jobId, { legacyJobId: legacy!.id }, { sha256: fileSha, charged: false });
+    }
     await tx.query(
       `update jobs set status = 'succeeded', message = $2, file_name = $3, sha256 = $4, artifact = $5, bytes = $6, exported = true where id = $1`,
       [jobId, "项目工程包已导出，不是 RPK", fileName, fileSha, zipBase64, zip.length],
     );
-    return { ok: true as const, fileName, sha256: fileSha, zipBase64, reused: false, charged: true, artifactType: "bproj" as const };
+    return { ok: true as const, fileName, sha256: fileSha, zipBase64, reused: previouslyPaid, upgraded: previouslyPaid, charged: !previouslyPaid, artifactType: "bproj" as const };
   });
 }
 

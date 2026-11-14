@@ -63,7 +63,7 @@ async function api(user, action, payload = {}) {
 }
 const upload = (a, data, mime = "image/png", extra = {}) =>
   api(a, "uploadAsset", { mime, fileBase64: Buffer.from(data).toString("base64"), ...extra });
-let a, b, c, asset, largeAsset, projectId, doc, bundle;
+let a, b, c, asset, largeAsset, projectId, importedProjectId, doc, bundle;
 let browser;
 try {
   await step(
@@ -194,6 +194,7 @@ try {
       });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.notEqual(r.body.projectId, projectId);
+      importedProjectId=r.body.projectId;
       assert.deepEqual(
         Buffer.from((await api(b, "getAsset", { sha256: asset.sha256 })).body.fileBase64, "base64"),
         Buffer.from(iconPng(32)),
@@ -202,6 +203,16 @@ try {
       assert.equal(again.body.duplicate, true);
     },
   );
+  await step("upgrading historical metadata-only bproj preserves already-paid download entitlement",async()=>{
+    const loaded=(await api(b,"getProjectDoc",{projectId:importedProjectId})).body;
+    const legacyZip=writeZip([{path:"project.json",data:new TextEncoder().encode(JSON.stringify(loaded.doc))}]);
+    await db.query("insert into quota_accounts(user_id,kind,balance) values($1,'export',4) on conflict(user_id,kind) do update set balance=4",[b.id]);
+    await db.query("insert into jobs(id,user_id,project_id,kind,status,idempotency_key,artifact,exported,file_name,sha256,bytes) values($1,$2,$3,'export','succeeded',$4,$5,true,'legacy.bproj',$6,$7)",[`legacy${tag}`,b.id,importedProjectId,`bproj2:${importedProjectId}:${loaded.contentSha256}`,Buffer.from(legacyZip).toString("base64"),createHash("sha256").update(legacyZip).digest("hex"),legacyZip.length]);
+    const result=await api(b,"exportBundle",{projectId:importedProjectId,expectedRevision:loaded.revision,expectedContentSha256:loaded.contentSha256});assert.equal(result.status,200,JSON.stringify(result.body));
+    assert.equal((await db.query("select balance from quota_accounts where user_id=$1 and kind='export'",[b.id])).rows[0].balance,4);
+    assert.equal(result.body.charged,false);assert.equal(result.body.upgraded,true);
+    const packed=await readZip(Buffer.from(result.body.zipBase64,"base64"));assert.deepEqual(Buffer.from(packed[asset.path]),Buffer.from(iconPng(32)));
+  });
   await step(
     "missing, undeclared, duplicate, traversal, corrupt binary packages reject with no new projects",
     async () => {
